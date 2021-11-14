@@ -21,7 +21,7 @@ def hello_world():
         # Executing a SQL query
         cursor.execute("SELECT * FROM test;")
         # Fetch result
-        record = cursor.fetchone()
+        record = cursor.fetchall()
         return jsonify({
             "output": record
         })
