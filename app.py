@@ -1,38 +1,45 @@
 import psycopg2
 from psycopg2 import Error
+import psycopg2.extras
+from flask import request
 
 from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-@app.route("/")
-def hello_world():
-
+def query(query_string):
     try:
-        # Connect to an existing database
         connection = psycopg2.connect(user="mwtnjzht",
                                     password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
                                     host="john.db.elephantsql.com",
                                     port="5432",
                                     database="mwtnjzht")
-
-        # Create a cursor to perform database operations
-        cursor = connection.cursor()
-        # Executing a SQL query
-        cursor.execute("SELECT * FROM test;")
-        # Fetch result
+        cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+        cursor.execute(query_string)
         record = cursor.fetchall()
-        return jsonify({
-            "output": record
-        })
+        return record
 
     except (Exception, Error) as error:
-        return jsonify({
-            "error": 123
-        })
+        return []
     finally:
         if (connection):
             cursor.close()
             connection.close()
+
+@app.route("/coviddata")
+def coviddata():
+    vaccine_data = query("SELECT * FROM vaccinedata;")
+    dailycase_data = query("SELECT * FROM dailycase;")
+    return jsonify({
+       "vaccine_data": vaccine_data,
+       "dailycase_data": dailycase_data
+    })
     
+# @app.route("/request_input_example")
+# def request_input_example():
+
+#     query("INSERT INTO abc VALUES(\"" + str(request.get_json()["hello"]) + "\")")
     
+#     return jsonify({
+#         "user_request": request.get_json()["hello"]
+#     })
