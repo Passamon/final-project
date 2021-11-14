@@ -55,7 +55,7 @@ def data():
             "Vaccines1": vaccine_data[i]["vaccines1"],
             "Vaccines2": vaccine_data[i]["vaccines2"],
             # "Vaccines3": vaccine_data[i]["vaccines3"],
-            "test": str(dailycase_data[i]["name"])
+            # "test": str(dailycase_data[i]["name"])
         })
             
         i = i + 1        
