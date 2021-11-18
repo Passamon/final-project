@@ -4,6 +4,8 @@ import psycopg2.extras
 from flask import request
 
 from flask import Flask, jsonify
+from flask_cors import CORS, cross_origin
+
 import datetime
 
 import random
@@ -30,6 +32,7 @@ def query(query_string):
             connection.close()
 
 @app.route("/coviddata")
+@cross_origin()
 def data():
     
     dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
@@ -102,6 +105,7 @@ def monthToMonthName(month):
 
 
 @app.route("/coviddata/day")
+@cross_origin()
 def day():
     
     dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
@@ -138,6 +142,7 @@ def day():
     })
     
 @app.route("/coviddata/week")
+@cross_origin()
 def week():
     
     dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
@@ -292,6 +297,7 @@ def week():
     })
     
 @app.route("/coviddata/month")
+@cross_origin()
 def month():
     
     dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
@@ -399,6 +405,7 @@ def month():
     
     
 # @app.route("/request_input_example")
+# @cross_origin()
 # def request_input_example():
 
 #     query("INSERT INTO abc VALUES(\"" + str(request.get_json()["hello"]) + "\")")
