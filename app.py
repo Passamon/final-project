@@ -55,9 +55,9 @@ def data():
             "Recovery": dailycase_data[i]["recovery"],
             "Hospital": dailycase_data[i]["hospital"],
             "Deaths": dailycase_data[i]["deaths"],
-            "Vaccines1": vaccine_data[i]["vaccines1"],
-            "Vaccines2": vaccine_data[i]["vaccines2"],
-            # "Vaccines3": vaccine_data[i]["vaccines3"],
+            "Vaccine1": vaccine_data[i]["vaccines1"],
+            "Vaccine2": vaccine_data[i]["vaccines2"],
+            # "Vaccine3": vaccine_data[i]["vaccines3"],
             # "test": str(dailycase_data[i]["name"])
         })
             
@@ -129,8 +129,8 @@ def day():
             "Recovery": dailycase_data[i]["recovery"],
             "Hospital": dailycase_data[i]["hospital"],
             "Deaths": dailycase_data[i]["deaths"],
-            "Vaccines1": vaccine_data[i]["vaccines1"],
-            "Vaccines2": vaccine_data[i]["vaccines2"],
+            "Vaccine1": vaccine_data[i]["vaccines1"],
+            "Vaccine2": vaccine_data[i]["vaccines2"],
             # "Vaccines3": vaccine_data[i]["vaccines3"],
             "test": str(dailycase_data[i]["name"])
         })
@@ -198,8 +198,8 @@ def week():
                 "Recovery": recovery,
                 "Hospital": hospital,
                 "Deaths": deaths,
-                "Vaccines1": vaccines1,
-                "Vaccines2": vaccines2,
+                "Vaccine1": vaccines1,
+                "Vaccine2": vaccines2,
                 "test": str(dailycase_data[i]["name"])
             })
             
