@@ -31,20 +31,32 @@ def query(query_string):
             cursor.close()
             connection.close()
 
-@app.route("/coviddata")
+@app.route("/coviddata" , methods=['GET','POST'])
 @cross_origin()
 def data():
     
-    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    start = request.get_json()["start_date"]     
+    end = request.get_json()["end_date"]
+    
+    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
+    
     
     i = 0
+    month = 1
+    year = -1
     result = []
     
     while i < len(dailycase_data):
         
         date_string = str(dailycase_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
+        
+        if (i == 0):
+            year = splited_date_string[0]
+        if (splited_date_string[0] != year):
+            month = 0
+            year = splited_date_string[0]
         
         sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         
@@ -57,14 +69,16 @@ def data():
             "Deaths": dailycase_data[i]["deaths"],
             "Vaccine1": vaccine_data[i]["vaccines1"],
             "Vaccine2": vaccine_data[i]["vaccines2"],
+            "Year": str(year)
             # "Vaccine3": vaccine_data[i]["vaccines3"],
             # "test": str(dailycase_data[i]["name"])
         })
             
-        i = i + 1        
+        i = i + 1
+        month = month + 1        
     
     return jsonify({
-        "data": result
+         "data": result
     })
     
 def monthToMonthName(month):
@@ -112,12 +126,20 @@ def day():
     vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     i = 0
+    month = 1
+    year = -1
     result = []
     
     while i < len(dailycase_data):
         
         date_string = str(dailycase_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
+        
+        if (i == 0):
+            year = splited_date_string[0]
+        if (splited_date_string[0] != year):
+            month = 0
+            year = splited_date_string[0]
         
             
         sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
@@ -131,11 +153,13 @@ def day():
             "Deaths": dailycase_data[i]["deaths"],
             "Vaccine1": vaccine_data[i]["vaccines1"],
             "Vaccine2": vaccine_data[i]["vaccines2"],
+            "Year": str(year),
             # "Vaccines3": vaccine_data[i]["vaccines3"],
             "test": str(dailycase_data[i]["name"])
         })
             
-        i = i + 1        
+        i = i + 1
+        month = month + 1        
     
     return jsonify({
         "data": result
@@ -200,6 +224,7 @@ def week():
                 "Deaths": deaths,
                 "Vaccine1": vaccines1,
                 "Vaccine2": vaccines2,
+                "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
             
@@ -254,6 +279,7 @@ def week():
                 "Deaths": deaths,
                 "Vaccine1": vaccines1,
                 "Vaccine2": vaccines2,
+                "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
             
@@ -287,6 +313,7 @@ def week():
                 "Deaths": deaths,
                 "Vaccine1": vaccines1,
                 "Vaccine2": vaccines2,
+                "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
             
@@ -349,6 +376,7 @@ def month():
                 "Deaths": deaths,
                 "Vaccine1": vaccines1,
                 "Vaccine2": vaccines2,
+                "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
             
@@ -393,6 +421,7 @@ def month():
                 "Deaths": deaths,
                 "Vaccine1": vaccines1,
                 "Vaccine2": vaccines2,
+                "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
     
@@ -413,3 +442,4 @@ def month():
 #     return jsonify({
 #         "user_request": request.get_json()["hello"]
 #     })
+
