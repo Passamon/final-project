@@ -397,7 +397,7 @@ def month():
             infected = infected + int(dailycase_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
             hospital = hospital + int(dailycase_data[i]["hospital"])
-            deaths = hospital + int(dailycase_data[i]["deaths"])
+            deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
             
