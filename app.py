@@ -133,7 +133,8 @@ def day():
         # sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         # s = sus
-        
+        # query("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
+        # print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
         result.append({
             "name": str(dailycase_data[i]["name"]),
             "Susceptible": str(sus),
@@ -148,7 +149,7 @@ def day():
         })
             
         i = i + 1  
-    
+        
     return jsonify({
         "data": result
     })
@@ -173,7 +174,7 @@ def week():
     deaths = 0
     vaccines1 = 0
     vaccines2 = 0
-    s = 66186727
+    s = 463307089
     # sus = 0
     
     result = []
@@ -225,8 +226,7 @@ def week():
             deaths = 0
             vaccines1 = 0
             vaccines2 = 0
-            s = 66186727
-            # sus = 0
+          
             
             day = 1
             month = month + 1
@@ -322,7 +322,7 @@ def week():
 @cross_origin()
 def month():
     
-    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths, susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     i = 0
@@ -336,7 +336,8 @@ def month():
     deaths = 0
     vaccines1 = 0
     vaccines2 = 0
-    s = 66186727
+    susceptible = 0
+    # s = 2051788537
     # sus = 0
     
     result = []
@@ -362,12 +363,12 @@ def month():
             #     vaccine_1 = random.randint(10000, 50000)
             #     vaccine_2 = random.randint(10000, 50000)
                 
-            sus = s - (vaccines1 + infected + recovery + hospital + deaths)
+            # sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             # s = sus
                      
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
-                "Susceptible": str(sus),
+                "Susceptible": susceptible,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -383,6 +384,7 @@ def month():
             deaths = 0
             vaccines1 = 0
             vaccines2 = 0
+            susceptible = 0
             
             infected = infected + int(dailycase_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
@@ -390,6 +392,7 @@ def month():
             deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             
             if (splited_date_string[0] != year):
                 month = 1
@@ -404,10 +407,7 @@ def month():
             deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
-            
-            
-            
-            
+            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             
             
         if (i == len(dailycase_data) - 1 and not pass_condition):
@@ -418,12 +418,12 @@ def month():
             #     vaccine_1 = random.randint(10000, 50000)
             #     vaccine_2 = random.randint(10000, 50000)
                 
-            sus = s - (vaccines1 + infected + recovery + hospital + deaths)
+            # sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             # s = sus
             
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
-                "Susceptible": str(sus),
+                "Susceptible": susceptible,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
