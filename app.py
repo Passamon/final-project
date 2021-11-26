@@ -120,7 +120,7 @@ def day():
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     s = 66186727
-    sus = 0
+    # sus = 0
     i = 0
     result = []
     
@@ -132,7 +132,7 @@ def day():
             
         # sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
-        s = sus
+        # s = sus
         
         result.append({
             "name": str(dailycase_data[i]["name"]),
@@ -174,7 +174,7 @@ def week():
     vaccines1 = 0
     vaccines2 = 0
     s = 66186727
-    sus = 0
+    # sus = 0
     
     result = []
     
@@ -204,7 +204,7 @@ def week():
         #         vaccine_2 = random.randint(10000, 50000)
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
-            s = sus
+            # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
@@ -226,7 +226,7 @@ def week():
             vaccines1 = 0
             vaccines2 = 0
             s = 66186727
-            sus = 0
+            # sus = 0
             
             day = 1
             month = month + 1
@@ -262,7 +262,7 @@ def week():
             #     vaccine_2 = random.randint(10000, 50000)
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
-            s = sus
+            # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
@@ -297,7 +297,7 @@ def week():
             #     vaccine_2 = random.randint(10000, 50000)
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
-            s = sus
+            # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
@@ -337,7 +337,7 @@ def month():
     vaccines1 = 0
     vaccines2 = 0
     s = 66186727
-    sus = 0
+    # sus = 0
     
     result = []
     
@@ -363,7 +363,7 @@ def month():
             #     vaccine_2 = random.randint(10000, 50000)
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
-            s = sus
+            # s = sus
                      
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
@@ -419,7 +419,7 @@ def month():
             #     vaccine_2 = random.randint(10000, 50000)
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
-            s = sus
+            # s = sus
             
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
