@@ -116,8 +116,8 @@ def monthToMonthName(month):
 @cross_origin()
 def day():
     
-    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     s = 66186727
     sus = 0
@@ -157,8 +157,8 @@ def day():
 @cross_origin()
 def week():
     
-    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     i = 0
     day = 1
@@ -322,8 +322,8 @@ def week():
 @cross_origin()
 def month():
     
-    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     i = 0
     month = 1
@@ -347,12 +347,12 @@ def month():
         
         date_string = str(dailycase_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
-        
+            
         if (i == 0):
             year = splited_date_string[0]
-        
+                  
         if (int(splited_date_string[1]) != month):
-            
+                
             pass_condition = True
             
             # vaccine_1 = 0
@@ -364,7 +364,7 @@ def month():
                 
             sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             s = sus
-            
+                     
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
                 "Susceptible": str(sus),
@@ -384,6 +384,13 @@ def month():
             vaccines1 = 0
             vaccines2 = 0
             
+            infected = infected + int(dailycase_data[i]["infected"])
+            recovery = recovery + int(dailycase_data[i]["recovery"])
+            hospital = hospital + int(dailycase_data[i]["hospital"])
+            deaths = deaths + int(dailycase_data[i]["deaths"])
+            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            
             if (splited_date_string[0] != year):
                 month = 1
                 year = splited_date_string[0]
@@ -397,6 +404,10 @@ def month():
             deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            
+            
+            
+            
             
             
         if (i == len(dailycase_data) - 1 and not pass_condition):
