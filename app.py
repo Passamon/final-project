@@ -38,12 +38,10 @@ def data():
     start = request.get_json()["start_date"]     
     end = request.get_json()["end_date"]
     
-    dailycase_data = query("SELECT date as name, newconfirmed as infected, newrecovered as recovery, newhospitalized as hospital, newdeaths as deaths FROM dailycase WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, vaccines1, vaccines2, vaccines3 FROM vaccinedata WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
     
 
-    s = 66186727
-    sus = 0
     i = 0
     result = []
     
@@ -52,13 +50,9 @@ def data():
         date_string = str(dailycase_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
         
-        
-        sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
-        s = sus
-        
         result.append({
             "name": str(dailycase_data[i]["name"]),
-            "Susceptible": str(sus),
+            "Susceptible": dailycase_data[i]["susceptible"],
             "Infected": dailycase_data[i]["infected"],
             "Recovery": dailycase_data[i]["recovery"],
             "Hospital": dailycase_data[i]["hospital"],
@@ -133,11 +127,11 @@ def day():
         # sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         # s = sus
-        # query("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
-        # print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
+        query("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
+        print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
         result.append({
             "name": str(dailycase_data[i]["name"]),
-            "Susceptible": str(sus),
+            "Susceptible": sus,
             "Infected": dailycase_data[i]["infected"],
             "Recovery": dailycase_data[i]["recovery"],
             "Hospital": dailycase_data[i]["hospital"],
@@ -209,7 +203,7 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": str(sus),
+                "Susceptible": sus,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -266,7 +260,7 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": str(sus),
+                "Susceptible": sus,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -301,7 +295,7 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": str(sus),
+                "Susceptible": sus,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
