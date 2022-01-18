@@ -31,6 +31,20 @@ def query(query_string):
             cursor.close()
             connection.close()
 
+def insert(insert_string):
+    connection = psycopg2.connect(user="mwtnjzht",
+                                    password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
+                                    host="john.db.elephantsql.com",
+                                    port="5432",
+                                    database="mwtnjzht")
+
+    connection.autocommit = True
+    cursor = connection.cursor()
+    cursor.executemany("INSERT INTO initialvalue VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", insert_string)
+ 
+    connection.commit()
+    connection.close()
+
 @app.route("/coviddata" , methods=['POST'])
 @cross_origin()
 def data():
@@ -127,8 +141,8 @@ def day():
         # sus = 66186727 - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
         # s = sus
-        query("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
-        print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
+        # query("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
+        # print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
         result.append({
             "name": str(dailycase_data[i]["name"]),
             "Susceptible": sus,
@@ -152,7 +166,7 @@ def day():
 @cross_origin()
 def week():
     
-    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, recovered as recovery, hospitalized as hospital, deaths as deaths, susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     
     i = 0
@@ -168,7 +182,8 @@ def week():
     deaths = 0
     vaccines1 = 0
     vaccines2 = 0
-    s = 463307089
+    susceptible = 0
+    # s = 463307089
     # sus = 0
     
     result = []
@@ -198,12 +213,12 @@ def week():
         #         vaccine_1 = random.randint(10000, 50000)
         #         vaccine_2 = random.randint(10000, 50000)
                 
-            sus = s - (vaccines1 + infected + recovery + hospital + deaths)
+            # sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": sus,
+                "Susceptible": susceptible,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -220,6 +235,7 @@ def week():
             deaths = 0
             vaccines1 = 0
             vaccines2 = 0
+            susceptible = 0
           
             
             day = 1
@@ -234,6 +250,7 @@ def week():
             deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             
             day = day + 1
             
@@ -247,6 +264,7 @@ def week():
             deaths = deaths + int(dailycase_data[i]["deaths"])
             vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
             vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             
             # vaccine_1 = 0
             # vaccine_2 = 0
@@ -255,12 +273,12 @@ def week():
             #     vaccine_1 = random.randint(10000, 50000)
             #     vaccine_2 = random.randint(10000, 50000)
                 
-            sus = s - (vaccines1 + infected + recovery + hospital + deaths)
+            # sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": sus,
+                "Susceptible": susceptible,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -290,12 +308,12 @@ def week():
             #     vaccine_1 = random.randint(10000, 50000)
             #     vaccine_2 = random.randint(10000, 50000)
                 
-            sus = s - (vaccines1 + infected + recovery + hospital + deaths)
+            # sus = s - (vaccines1 + infected + recovery + hospital + deaths)
             # s = sus
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": sus,
+                "Susceptible": susceptible,
                 "Infected": infected,
                 "Recovery": recovery,
                 "Hospital": hospital,
@@ -433,6 +451,28 @@ def month():
         "data": result
     })
     
+@app.route("/covidmodel" , methods=['POST'])
+@cross_origin()
+def input_request():
+   
+    rho = request.get_json()["rho"]
+    eta = request.get_json()["eta"]
+    beta = request.get_json()["beta"]
+    omega1 = request.get_json()["omega1"]
+    omega2 = request.get_json()["omega2"]
+    epsilon1 = request.get_json()["epsilon1"]
+    epsilon2 = request.get_json()["epsilon2"]
+    alpha = request.get_json()["alpha"]
+    lambdas = request.get_json()["lambdas"]
+    lambdah = request.get_json()["lambdah"]
+    zeta = request.get_json()["zeta"]
+    mu = request.get_json()["mu"]
+    
+
+    json = (rho,eta,beta,omega1,omega2,epsilon1,epsilon2,alpha,lambdas,lambdah,zeta,mu)
+    insert([json])
+    return jsonify(json)
+
     
     
 # @app.route("/request_input_example")
