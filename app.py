@@ -66,13 +66,13 @@ def data():
         
         result.append({
             "name": str(dailycase_data[i]["name"]),
-            "Susceptible": dailycase_data[i]["susceptible"],
-            "Infected": dailycase_data[i]["infected"],
-            "Recovery": dailycase_data[i]["recovery"],
-            "Hospital": dailycase_data[i]["hospital"],
-            "Deaths": dailycase_data[i]["deaths"],
-            "Vaccine1": vaccine_data[i]["vaccines1"],
-            "Vaccine2": vaccine_data[i]["vaccines2"],
+            "Susceptible": int(dailycase_data[i]["susceptible"]),
+            "Infected": int(dailycase_data[i]["infected"]),
+            "Recovery": int(dailycase_data[i]["recovery"]),
+            "Hospital": int(dailycase_data[i]["hospital"]),
+            "Deaths": int(dailycase_data[i]["deaths"]),
+            "Vaccine1": int(vaccine_data[i]["vaccines1"]),
+            "Vaccine2": int(vaccine_data[i]["vaccines2"]),
             # "Vaccine3": vaccine_data[i]["vaccines3"],
             # "test": str(dailycase_data[i]["name"])
         })
@@ -145,13 +145,13 @@ def day():
         # print("UPDATE dailycase SET susceptible = \'" + str(sus) + "\' WHERE date = \'" + date_string + "\';")
         result.append({
             "name": str(dailycase_data[i]["name"]),
-            "Susceptible": sus,
-            "Infected": dailycase_data[i]["infected"],
-            "Recovery": dailycase_data[i]["recovery"],
-            "Hospital": dailycase_data[i]["hospital"],
-            "Deaths": dailycase_data[i]["deaths"],
-            "Vaccine1": vaccine_data[i]["vaccines1"],
-            "Vaccine2": vaccine_data[i]["vaccines2"],
+            "Susceptible": int(sus),
+            "Infected": int(dailycase_data[i]["infected"]),
+            "Recovery": int(dailycase_data[i]["recovery"]),
+            "Hospital": int(dailycase_data[i]["hospital"]),
+            "Deaths": int(dailycase_data[i]["deaths"]),
+            "Vaccine1": int(vaccine_data[i]["vaccines1"]),
+            "Vaccine2": int(vaccine_data[i]["vaccines2"]),
             # "Vaccines3": vaccine_data[i]["vaccines3"],
             "test": str(dailycase_data[i]["name"])
         })
@@ -218,13 +218,13 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": susceptible,
-                "Infected": infected,
-                "Recovery": recovery,
-                "Hospital": hospital,
-                "Deaths": deaths,
-                "Vaccine1": vaccines1,
-                "Vaccine2": vaccines2,
+                "Susceptible": int(susceptible),
+                "Infected": int(infected),
+                "Recovery": int(recovery),
+                "Hospital": int(hospital),
+                "Deaths": int(deaths),
+                "Vaccine1": int(vaccines1),
+                "Vaccine2": int(vaccines2),
                 "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
@@ -278,13 +278,13 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": susceptible,
-                "Infected": infected,
-                "Recovery": recovery,
-                "Hospital": hospital,
-                "Deaths": deaths,
-                "Vaccine1": vaccines1,
-                "Vaccine2": vaccines2,
+                "Susceptible": int(susceptible),
+                "Infected": int(infected),
+                "Recovery": int(recovery),
+                "Hospital": int(hospital),
+                "Deaths": int(deaths),
+                "Vaccine1": int(vaccines1),
+                "Vaccine2": int(vaccines2),
                 "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
@@ -313,13 +313,13 @@ def week():
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": susceptible,
-                "Infected": infected,
-                "Recovery": recovery,
-                "Hospital": hospital,
-                "Deaths": deaths,
-                "Vaccine1": vaccines1,
-                "Vaccine2": vaccines2,
+                "Susceptible": int(susceptible),
+                "Infected": int(infected),
+                "Recovery": int(recovery),
+                "Hospital": int(hospital),
+                "Deaths": int(deaths),
+                "Vaccine1": int(vaccines1),
+                "Vaccine2": int(vaccines2),
                 "Year": str(year),
                 "test": str(dailycase_data[i]["name"])
             })
@@ -380,13 +380,13 @@ def month():
                      
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
-                "Susceptible": susceptible,
-                "Infected": infected,
-                "Recovery": recovery,
-                "Hospital": hospital,
-                "Deaths": deaths,
-                "Vaccine1": vaccines1,
-                "Vaccine2": vaccines2,
+                "Susceptible": int(susceptible),
+                "Infected": int(infected),
+                "Recovery": int(recovery),
+                "Hospital": int(hospital),
+                "Deaths": int(deaths),
+                "Vaccine1": int(vaccines1),
+                "Vaccine2": int(vaccines2),
                 "test": str(dailycase_data[i]["name"])
             })
             
@@ -435,13 +435,13 @@ def month():
             
             result.append({
                 "name": monthToMonthName(month) + "-" + str(year),
-                "Susceptible": susceptible,
-                "Infected": infected,
-                "Recovery": recovery,
-                "Hospital": hospital,
-                "Deaths": deaths,
-                "Vaccine1": vaccines1,
-                "Vaccine2": vaccines2,
+                "Susceptible": int(susceptible),
+                "Infected": int(infected),
+                "Recovery": int(recovery),
+                "Hospital": int(hospital),
+                "Deaths": int(deaths),
+                "Vaccine1": int(vaccines1),
+                "Vaccine2": int(vaccines2),
                 "test": str(dailycase_data[i]["name"])
             })
     
@@ -460,6 +460,7 @@ def input_request():
     beta = request.get_json()["beta"]
     omega1 = request.get_json()["omega1"]
     omega2 = request.get_json()["omega2"]
+    omega3 = request.get_json()["omega3"]
     epsilon1 = request.get_json()["epsilon1"]
     epsilon2 = request.get_json()["epsilon2"]
     alpha = request.get_json()["alpha"]
@@ -469,19 +470,10 @@ def input_request():
     mu = request.get_json()["mu"]
     
 
-    json = (rho,eta,beta,omega1,omega2,epsilon1,epsilon2,alpha,lambdas,lambdah,zeta,mu)
+    json = (rho, eta, beta, omega1, omega2, omega3, epsilon1, epsilon2, alpha, lambdas, lambdah, zeta, mu)
     insert([json])
     return jsonify(json)
 
     
     
-# @app.route("/request_input_example")
-# @cross_origin()
-# def request_input_example():
-
-#     query("INSERT INTO abc VALUES(\"" + str(request.get_json()["hello"]) + "\")")
-    
-#     return jsonify({
-#         "user_request": request.get_json()["hello"]
-#     })
 
