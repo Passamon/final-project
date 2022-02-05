@@ -1179,3 +1179,7 @@ def vsmonth():
         "data": result
     })
 
+@app.route("/test")
+@cross_origin()
+def test():
+    return "Status 200 ok"
