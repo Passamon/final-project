@@ -20,14 +20,22 @@ def odes(x, t):
 
 
     # assign each ODE to a vector element
-    S = x[0]
-    I = x[1]
-    V1 = x[2]
-    V2 = x[3]
-    M = x[4]
-    H = x[5]
-    R = x[6]
-    D = x[7]
+    # S = x[0]
+    # I = x[1]
+    # V1 = x[2]
+    # V2 = x[3]
+    # M = x[4]
+    # H = x[5]
+    # R = x[6]
+    # D = x[7]
+
+    S = x[0];
+    V1 = x[1];
+    V2 = x[2];
+    I = x[3];
+    R = x[4];
+    H = x[5];
+    M = x[6];
 
     # define each ODE
     dSdt = - beta*S*I - omega1*S - mu*S
@@ -35,16 +43,16 @@ def odes(x, t):
     dV2dt = omega2*V1 - omega3*V2 - beta*(1-epsilon2)*V2*I - mu*V2
     dMdt = omega3*V2 + R - beta*(1-epsilon2)*M*I - mu*M
     dIdt = beta*S*I + beta*(1-epsilon1)*V1*I + beta*(1-epsilon2)*V2*I + beta*(1-epsilon2)*M*I - alpha*I -lambdas*I - zetas*I
-    dHdt = alpha*I - lambdah*H - zetah*H
-    dRdt = lambdah*H + lambdas*I -R
+    dHdt = alpha*I - lambdah*I - zetah*H
+    dRdt = lambdas*I + lambdah*H -R
     dDdt = zetas*I +zetah*H
 
-    return[dSdt,dV1dt,dV2dt,dMdt,dIdt,dHdt,dRdt,dDdt]
+    return[dSdt,dV1dt,dV2dt,dIdt,dRdt,dHdt,dMdt,dDdt]
 
 
 
 # innitial conditions
-N = 66.186e6
+N = 66186000
 print(N)
 x0=[51001012,13955087,3911439,615314,13402,205002,405322,4990]
 
