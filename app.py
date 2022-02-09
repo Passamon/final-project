@@ -462,7 +462,7 @@ def input_request():
         alpha= request.get_json()["alpha"]
         lambdas= request.get_json()["lambdas"]
         lambdah= request.get_json()["lambdah"]
-        length = request.get_json()["tiime_length"]
+        length = request.get_json()["time_length"]
         
 
         json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(), length, start)
