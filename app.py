@@ -9,6 +9,8 @@ import datetime
 from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
 
+from zoneinfo import ZoneInfo
+
 app = Flask(__name__)
 
 def query(query_string):
@@ -465,7 +467,7 @@ def input_request():
         length = request.get_json()["time_length"]
         
 
-        json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(), length, start)
+        json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
         insert([json])
         return ""
     else:
@@ -613,7 +615,7 @@ def calcovidmodel():
             # "test": str(dailycase_data[i]["name"])
         })
 
-        updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now())
+        updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
   
     # print(result)
     # return ""
