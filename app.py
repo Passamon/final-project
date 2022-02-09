@@ -555,7 +555,10 @@ def calcovidmodel():
     global lambdah
     global length
 
-    initial_value = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length FROM initialvalue ORDER BY date DESC LIMIT 1;")
+    # innitial conditions
+    start = request.get_json()["start_date"]
+
+    initial_value = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length FROM initialvalue WHERE name = \'" + start + "\' ORDER BY date DESC LIMIT 1;")
     beta = float(initial_value[0]["beta"])
     zetas = float(initial_value[0]["zetas"])
     zetah = float(initial_value[0]["zetah"])
@@ -570,9 +573,6 @@ def calcovidmodel():
     lambdah = float(initial_value[0]["lambdah"])
     length = int(initial_value[0]["length"])
     
-    # innitial conditions
-    start = request.get_json()["start_date"]
-
     date_start = datetime.datetime.strptime(start, "%Y-%m-%d")
     # print(int(length))
 
