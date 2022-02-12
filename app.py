@@ -41,7 +41,7 @@ def insert(insert_string):
 
     connection.autocommit = True
     cursor = connection.cursor()
-    cursor.executemany("INSERT INTO initialvalue VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", insert_string)
+    cursor.executemany("INSERT INTO initialvalue VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", insert_string)
  
     connection.commit()
     connection.close()
@@ -444,63 +444,6 @@ def month():
     return jsonify({
         "data": result
     })
-    
-@app.route("/covidmodel" , methods=['GET','POST'])
-@cross_origin()
-def input_request():
-
-    if request.method == 'POST':
-
-        start = request.get_json()["start_date"]
-        beta = request.get_json()["beta"]
-        zetas = request.get_json()["zetas"]
-        zetah = request.get_json()["zetah"]
-        omega1= request.get_json()["omega1"]
-        omega2= request.get_json()["omega2"]
-        omega3= request.get_json()["omega3"]
-        epsilon1= request.get_json()["epsilon1"]
-        epsilon2= request.get_json()["epsilon2"]
-        mu= request.get_json()["mu"]
-        alpha= request.get_json()["alpha"]
-        lambdas= request.get_json()["lambdas"]
-        lambdah= request.get_json()["lambdah"]
-        length = request.get_json()["time_length"]
-        
-
-        json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
-        insert([json])
-        return ""
-    else:
-        result = []
-        i = 0
-        initial_value = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length FROM initialvalue ORDER BY date DESC LIMIT 1;")
-    
-        while i < len(initial_value):
-            
-            result.append({
-                "beta": float(initial_value[i]["beta"]),
-                "zetas": float(initial_value[i]["zetas"]),
-                "zetah": float(initial_value[i]["zetah"]),
-                "omega1": float(initial_value[i]["omega1"]),
-                "omega2": float(initial_value[i]["omega2"]),
-                "omega3": float(initial_value[i]["omega3"]),
-                "epsilon1": float(initial_value[i]["epsilon1"]),
-                "epsilon2": float(initial_value[i]["epsilon2"]),
-                "mu": float(initial_value[i]["mu"]),
-                "alpha": float(initial_value[i]["alpha"]),
-                "lambdas": float(initial_value[i]["lambdas"]),
-                "lambdah": float(initial_value[i]["lambdah"]),
-                "time_length": int(initial_value[i]["length"]),
-            })
-                
-            i = i + 1  
-        #     print(result)
-        # return ""
-            
-        return jsonify({
-            "initial": result
-        })
-
 
 beta = 1
 zetas = 1
@@ -537,7 +480,220 @@ def odes(x, t):
     dRdt = lambdas*I + lambdah*H -R
     dDdt = zetas*I +zetah*H
 
-    return[dSdt,dV1dt,dV2dt,dIdt,dRdt,dHdt,dMdt,dDdt]
+    return[dSdt,dV1dt,dV2dt,dIdt,dRdt,dHdt,dMdt,dDdt]    
+
+@app.route("/covidmodel" , methods=['PUT','GET'])
+@cross_origin()
+def input_request():
+
+    global beta
+    global zetas
+    global zetah 
+    global omega1
+    global omega2
+    global omega3
+    global epsilon1
+    global epsilon2
+    global mu
+    global alpha
+    global lambdas
+    global lambdah
+
+    if request.method == 'PUT':
+
+        start = request.get_json()["start_date"]
+        beta = request.get_json()["beta"]
+        zetas = request.get_json()["zetas"]
+        zetah = request.get_json()["zetah"]
+        omega1= request.get_json()["omega1"]
+        omega2= request.get_json()["omega2"]
+        omega3= request.get_json()["omega3"]
+        epsilon1= request.get_json()["epsilon1"]
+        epsilon2= request.get_json()["epsilon2"]
+        mu= request.get_json()["mu"]
+        alpha= request.get_json()["alpha"]
+        lambdas= request.get_json()["lambdas"]
+        lambdah= request.get_json()["lambdah"]
+
+        beta = float(beta)
+        zetas = float(zetas)
+        zetah = float(zetah)
+        omega1= float( omega1)
+        omega2= float(omega2)
+        omega3= float( omega3)
+        epsilon1= float(epsilon1)
+        epsilon2= float(epsilon2)
+        mu= float(mu)
+        alpha= float(alpha)
+        lambdas= float(lambdas)
+        lambdah= float(lambdah)
+
+        date_start = datetime.datetime.strptime(start, "%Y-%m-%d")
+
+        dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date = \'" + start + "\' ORDER BY date ASC;")
+        vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date = \'" + start + "\' ORDER BY date ASC;")
+
+        x0=[int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
+        
+        length = 16
+        t = np.linspace(0, length - 1, length)
+        output = odeint(odes,x0,t)
+
+        i = 0
+        result = []
+        initialresult = []
+        
+        for i in range(length):  
+
+            date_1 = date_start + datetime.timedelta(days=i)
+            date_string = str(date_1)
+            splited_date_string = date_string.split(sep = " ")
+            
+            result.append({
+                "name": str(splited_date_string[0]), 
+                "Susceptible": int(output[i][0]),
+                "Infected": int(output[i][3]),
+                "Recovery": int(output[i][4]),
+                "Hospital": int(output[i][5]),
+                "Deaths": int(output[i][7]),
+                "Vaccine1": int(output[i][1]),
+                "Vaccine2": int(output[i][2]),
+                "Maintenance": int(output[i][6]),
+                # "test": str(dailycase_data[i]["name"])
+            })
+
+            updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
+        json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
+        insert([json])
+
+        print(result)
+        # return ""
+            
+        initialresult.append({
+            "name": str(start),
+            "beta": float(beta),
+            "zetas": float(zetas),
+            "zetah": float(zetah),
+            "omega1": float(omega1),
+            "omega2": float(omega2),
+            "omega3": float(omega3),
+            "epsilon1": float(epsilon1),
+            "epsilon2": float(epsilon2),
+            "mu": float(mu),
+            "alpha": float(alpha),
+            "lambdas": float(lambdas),
+            "lambdah": float(lambdah),
+        })
+
+        return jsonify({
+            "initial_value": initialresult
+        })
+
+    # elif request.method == 'POST':
+    #     start = request.get_json()["start_date"]
+        
+    #     defult = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default WHERE name = \'" + start + "\' LIMIT 1;")
+
+    #     beta = float(defult[0]["beta"])
+    #     zetas = float(defult[0]["zetas"])
+    #     zetah = float(defult[0]["zetah"])
+    #     omega1 = float(defult[0]["omega1"])
+    #     omega2 = float(defult[0]["omega2"])
+    #     omega3 = float(defult[0]["omega3"])
+    #     epsilon1 = float(defult[0]["epsilon1"])
+    #     epsilon2 = float(defult[0]["epsilon2"])
+    #     mu = float(defult[0]["mu"])
+    #     alpha = float(defult[0]["alpha"])
+    #     lambdas = float(defult[0]["lambdas"])
+    #     lambdah = float(defult[0]["lambdah"])
+
+    #     date_start = datetime.datetime.strptime(start, "%Y-%m-%d")
+
+    #     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date = \'" + start + "\' ORDER BY date ASC;")
+    #     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date = \'" + start + "\' ORDER BY date ASC;")
+
+    #     x0=[int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
+        
+    #     length = 16
+    #     result = []
+    #     result1 = []
+    #     i = 0
+
+    #     t = np.linspace(0, length - 1, length)
+    #     output = odeint(odes,x0,t)
+
+    #     for i in range(length):  
+
+    #         date_1 = date_start + datetime.timedelta(days=i)
+    #         date_string = str(date_1)
+    #         splited_date_string = date_string.split(sep = " ")
+            
+    #         result1.append({
+    #             "name": str(splited_date_string[0]), 
+    #             "Susceptible": int(output[i][0]),
+    #             "Infected": int(output[i][3]),
+    #             "Recovery": int(output[i][4]),
+    #             "Hospital": int(output[i][5]),
+    #             "Deaths": int(output[i][7]),
+    #             "Vaccine1": int(output[i][1]),
+    #             "Vaccine2": int(output[i][2]),
+    #             "Maintenance": int(output[i][6]),
+    #             # "test": str(dailycase_data[i]["name"])
+    #         })
+
+    #         updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
+    
+    #     print(result1)
+
+            
+    #     result.append({
+    #         "name": str(start),
+    #         "beta": float(defult[0]["beta"]),
+    #         "zetas": float(defult[0]["zetas"]),
+    #         "zetah": float(defult[0]["zetah"]),
+    #         "omega1": float(defult[0]["omega1"]),
+    #         "omega2": float(defult[0]["omega2"]),
+    #         "omega3": float(defult[0]["omega3"]),
+    #         "epsilon1": float(defult[0]["epsilon1"]),
+    #         "epsilon2": float(defult[0]["epsilon2"]),
+    #         "mu": float(defult[0]["mu"]),
+    #         "alpha": float(defult[0]["alpha"]),
+    #         "lambdas": float(defult[0]["lambdas"]),
+    #         "lambdah": float(defult[0]["lambdah"]),
+    #     })
+                
+    #     return jsonify({
+    #         "initial_default": result
+    #     })
+    else:
+        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default;")
+
+        i = 0
+        result = []
+    
+        while i < len(all_data):
+            result.append({
+                "name": str((all_data[i]["name"])),
+                "beta": float(all_data[i]["beta"]),
+                "zetas": float(all_data[i]["zetas"]),
+                "zetah": float(all_data[i]["zetah"]),
+                "omega1": float(all_data[i]["omega1"]),
+                "omega2": float(all_data[i]["omega2"]),
+                "omega3": float(all_data[i]["omega3"]),
+                "epsilon1": float(all_data[i]["epsilon1"]),
+                "epsilon2": float(all_data[i]["epsilon2"]),
+                "mu": float(all_data[i]["mu"]),
+                "alpha": float(all_data[i]["alpha"]),
+                "lambdas": float(all_data[i]["lambdas"]),
+                "lambdah": float(all_data[i]["lambdah"]),
+            })
+
+            i = i + 1 
+                
+        return jsonify({
+            "initial_default": result
+        })
+
 
 @app.route("/calcovidmodel" , methods=['POST'])
 @cross_origin()
