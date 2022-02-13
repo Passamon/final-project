@@ -1,3 +1,5 @@
+from click import password_option
+from more_itertools import value_chain
 import psycopg2
 from psycopg2 import Error
 import psycopg2.extras
@@ -10,6 +12,8 @@ from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
 
 from zoneinfo import ZoneInfo
+
+from sqlalchemy import null
 
 app = Flask(__name__)
 
@@ -46,6 +50,20 @@ def insert(insert_string):
     connection.commit()
     connection.close()
 
+def insertcalulate(insert_string):
+    connection = psycopg2.connect(user="mwtnjzht",
+                                    password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
+                                    host="john.db.elephantsql.com",
+                                    port="5432",
+                                    database="mwtnjzht")
+
+    connection.autocommit = True
+    cursor = connection.cursor()
+    cursor.executemany("INSERT INTO updatesomenode VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", insert_string)
+ 
+    connection.commit()
+    connection.close()
+
 def updatecal(date,s,v1,v2,i,r,h,d,m,timestamp):
     connection = psycopg2.connect(user="mwtnjzht",
                                     password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
@@ -64,44 +82,24 @@ def updatecal(date,s,v1,v2,i,r,h,d,m,timestamp):
     connection.commit()
     connection.close()
 
-@app.route("/coviddata" , methods=['POST'])
-@cross_origin()
-def data():
-    
-    start = request.get_json()["start_date"]     
-    end = request.get_json()["end_date"]
-    
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, hospitalized as hospital, deaths as deaths, susceptible, recovered as recovery1  FROM dailycase WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date BETWEEN \'" + start + "\' and \'" + end + "\' ORDER BY date ASC;")
-    
+def updatecalculate(s,v1,v2,i,r,h,d,m,timestamp,date):
+    connection = psycopg2.connect(user="mwtnjzht",
+                                    password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
+                                    host="john.db.elephantsql.com",
+                                    port="5432",
+                                    database="mwtnjzht")
 
-    i = 0
-    result = []
-    
-    while i < len(dailycase_data):
-        
-        date_string = str(dailycase_data[i]["name"])
-        splited_date_string = date_string.split(sep = "-")
-        
-        result.append({
-            "name": str(dailycase_data[i]["name"]),
-            "Susceptible": int(dailycase_data[i]["susceptible"]),
-            "Infected": int(dailycase_data[i]["infected"]),
-            "Recovery": int(dailycase_data[i]["recovery"]),
-            "Hospital": int(dailycase_data[i]["hospital"]),
-            "Deaths": int(dailycase_data[i]["deaths"]),
-            "Vaccine1": int(vaccine_data[i]["vaccines1"]),
-            "Vaccine2": int(vaccine_data[i]["vaccines2"]),
-            "Maintenance":int(dailycase_data[i]["recovery1"])+int(vaccine_data[i]["vaccines3"]),
-            # "test": str(dailycase_data[i]["name"])
-        })
-            
-        i = i + 1       
-    
-    return jsonify({
-         "data": result
-    })
-    
+    connection.autocommit = True
+    cursor = connection.cursor()
+    sql = ''' update  updatesomenode  set
+          s = %s, v1 = %s, v2 = %s, i = %s, r = %s, h = %s, d = %s, m = %s, timestamp = %s
+        where date = %s;'''
+  
+    cursor.execute(sql,(s,v1,v2,i,r,h,d,m,timestamp,date))
+ 
+    connection.commit()
+    connection.close()    
+
 def monthToMonthName(month):
     if (month == 1):
         return "January"
@@ -138,13 +136,14 @@ def monthToMonthName(month):
     
     return "December"
 
-
 @app.route("/coviddata/day")
 @cross_origin()
 def day():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    
     
     s = 66186727
     i = 0
@@ -162,12 +161,12 @@ def day():
         result.append({
             "name": str(dailycase_data[i]["name"]),
             "Susceptible": int(sus),
-            "Infected": int(dailycase_data[i]["infected"]),
+            "Infected": int(model_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),
             "Recovery": int(dailycase_data[i]["recovery"]),
             "Hospital": int(dailycase_data[i]["hospital"]),
             "Deaths": int(dailycase_data[i]["deaths"]),
-            "Vaccine1": int(vaccine_data[i]["vaccines1"]),
-            "Vaccine2": int(vaccine_data[i]["vaccines2"]),
+            "Vaccine1": int(model_data[i]["vaccines1"]) - int(model_data[i]["vaccines2"]),
+            "Vaccine2": int(model_data[i]["vaccines2"]) - int(vaccine_data[i]["vaccines3"]),
             "Maintenance":int(dailycase_data[i]["recovery1"])+int(vaccine_data[i]["vaccines3"]),
             # "Vaccines3": vaccine_data[i]["vaccines3"]
         })
@@ -184,6 +183,7 @@ def week():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
     
     i = 0
     day = 1
@@ -204,6 +204,10 @@ def week():
     maintenance = 0
     # s = 463307089
     # sus = 0
+
+    infectedm = 0
+    vaccines1m = 0
+    vaccines2m = 0
     
     result = []
     
@@ -248,6 +252,10 @@ def week():
             recovery1 = 0
             vaccines3 = 0
             maintenance = 0
+
+            infectedm = 0
+            vaccines1m = 0
+            vaccines2m = 0
           
             
             day = 1
@@ -256,31 +264,45 @@ def week():
         
         
         if ((day % 7) != 0):
-            infected = infected + int(dailycase_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
+
+            infectedm = infectedm + int(model_data[i]["infected"])
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            infected = infectedm - recovery1
+
             hospital = hospital + int(dailycase_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            recovery = recovery + int(dailycase_data[i]["recovery"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
+
+            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
+            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            vaccines1 = vaccines1m - vaccines2m
+
+            vaccines2 = vaccines2m - vaccines3
             maintenance = vaccines3 + recovery1
+
             day = day + 1
             
         else:
-            
+
             pass_condition = True
             
-            infected = infected + int(dailycase_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
+            infectedm = infectedm + int(model_data[i]["infected"])
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            infected = infectedm - recovery1
+
             hospital = hospital + int(dailycase_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            recovery = recovery + int(dailycase_data[i]["recovery"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
+
+            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
+            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            vaccines1 = vaccines1m - vaccines2m
+
+            vaccines2 = vaccines2m - vaccines3
             maintenance = vaccines3 + recovery1
             
             result.append({
@@ -306,11 +328,14 @@ def week():
             vaccines3 = 0
             maintenance = 0
 
+            infectedm = 0
+            vaccines1m = 0
+            vaccines2m = 0
+
             week = week + 1
             day = day + 1
             
         if (i == len(dailycase_data) - 1 and not pass_condition):
-            
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
@@ -337,6 +362,7 @@ def month():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
     
     i = 0
     month = 1
@@ -353,8 +379,10 @@ def month():
     recovery1 = 0
     vaccines3 = 0
     maintenance = 0
-    # s = 2051788537
-    # sus = 0
+    
+    infectedm = 0
+    vaccines1m = 0
+    vaccines2m = 0
     
     result = []
     
@@ -394,16 +422,26 @@ def month():
             recovery1 = 0
             vaccines3 = 0
             maintenance = 0
+
+            infectedm = 0
+            vaccines1m = 0
+            vaccines2m = 0
             
-            infected = infected + int(dailycase_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
+            infectedm = infectedm + int(model_data[i]["infected"])
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            infected = infectedm - recovery1
+
             hospital = hospital + int(dailycase_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            recovery = recovery + int(dailycase_data[i]["recovery"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
+
+            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
+            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            vaccines1 = vaccines1m - vaccines2m
+
+            vaccines2 = vaccines2m - vaccines3
             maintenance = vaccines3 + recovery1
             
             if (splited_date_string[0] != year):
@@ -413,15 +451,21 @@ def month():
                 month = month + 1
             
         else:
-            infected = infected + int(dailycase_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
+            infectedm = infectedm + int(model_data[i]["infected"])
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            infected = infectedm - recovery1
+
             hospital = hospital + int(dailycase_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            recovery = recovery + int(dailycase_data[i]["recovery"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
+
+            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
+            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            vaccines1 = vaccines1m - vaccines2m
+
+            vaccines2 = vaccines2m - vaccines3
             maintenance = vaccines3 + recovery1
             
             
@@ -532,7 +576,8 @@ def input_request():
 
         dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date = \'" + start + "\' ORDER BY date ASC;")
         vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date = \'" + start + "\' ORDER BY date ASC;")
-
+        model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel WHERE date = '" + start + "';")
+        
         x0=[int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
         
         length = 16
@@ -551,18 +596,26 @@ def input_request():
             
             result.append({
                 "name": str(splited_date_string[0]), 
-                "Susceptible": int(output[i][0]),
-                "Infected": int(output[i][3]),
-                "Recovery": int(output[i][4]),
-                "Hospital": int(output[i][5]),
-                "Deaths": int(output[i][7]),
-                "Vaccine1": int(output[i][1]),
-                "Vaccine2": int(output[i][2]),
-                "Maintenance": int(output[i][6]),
+                "Susceptible": float(output[i][0]),
+                "Infected": float(output[i][3]),
+                "Recovery": float(output[i][4]),
+                "Hospital": float(output[i][5]),
+                "Deaths": float(output[i][7]),
+                "Vaccine1": float(output[i][1]),
+                "Vaccine2": float(output[i][2]),
+                "Maintenance": float(output[i][6]),
                 # "test": str(dailycase_data[i]["name"])
             })
 
-            updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
+            result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+            # updatecal(str(splited_date_string[0]),float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
+
+            model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE date = '" + date_string + "';")
+            if len(model_data) != 0:
+                updatecalculate(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+            else:
+                insertcalulate([result1])
+            
         json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
         insert([json])
 
@@ -589,202 +642,90 @@ def input_request():
             "initial_value": initialresult
         })
 
-    # elif request.method == 'POST':
-    #     start = request.get_json()["start_date"]
-        
-    #     defult = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default WHERE name = \'" + start + "\' LIMIT 1;")
-
-    #     beta = float(defult[0]["beta"])
-    #     zetas = float(defult[0]["zetas"])
-    #     zetah = float(defult[0]["zetah"])
-    #     omega1 = float(defult[0]["omega1"])
-    #     omega2 = float(defult[0]["omega2"])
-    #     omega3 = float(defult[0]["omega3"])
-    #     epsilon1 = float(defult[0]["epsilon1"])
-    #     epsilon2 = float(defult[0]["epsilon2"])
-    #     mu = float(defult[0]["mu"])
-    #     alpha = float(defult[0]["alpha"])
-    #     lambdas = float(defult[0]["lambdas"])
-    #     lambdah = float(defult[0]["lambdah"])
-
-    #     date_start = datetime.datetime.strptime(start, "%Y-%m-%d")
-
-    #     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date = \'" + start + "\' ORDER BY date ASC;")
-    #     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date = \'" + start + "\' ORDER BY date ASC;")
-
-    #     x0=[int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
-        
-    #     length = 16
-    #     result = []
-    #     result1 = []
-    #     i = 0
-
-    #     t = np.linspace(0, length - 1, length)
-    #     output = odeint(odes,x0,t)
-
-    #     for i in range(length):  
-
-    #         date_1 = date_start + datetime.timedelta(days=i)
-    #         date_string = str(date_1)
-    #         splited_date_string = date_string.split(sep = " ")
-            
-    #         result1.append({
-    #             "name": str(splited_date_string[0]), 
-    #             "Susceptible": int(output[i][0]),
-    #             "Infected": int(output[i][3]),
-    #             "Recovery": int(output[i][4]),
-    #             "Hospital": int(output[i][5]),
-    #             "Deaths": int(output[i][7]),
-    #             "Vaccine1": int(output[i][1]),
-    #             "Vaccine2": int(output[i][2]),
-    #             "Maintenance": int(output[i][6]),
-    #             # "test": str(dailycase_data[i]["name"])
-    #         })
-
-    #         updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
-    
-    #     print(result1)
-
-            
-    #     result.append({
-    #         "name": str(start),
-    #         "beta": float(defult[0]["beta"]),
-    #         "zetas": float(defult[0]["zetas"]),
-    #         "zetah": float(defult[0]["zetah"]),
-    #         "omega1": float(defult[0]["omega1"]),
-    #         "omega2": float(defult[0]["omega2"]),
-    #         "omega3": float(defult[0]["omega3"]),
-    #         "epsilon1": float(defult[0]["epsilon1"]),
-    #         "epsilon2": float(defult[0]["epsilon2"]),
-    #         "mu": float(defult[0]["mu"]),
-    #         "alpha": float(defult[0]["alpha"]),
-    #         "lambdas": float(defult[0]["lambdas"]),
-    #         "lambdah": float(defult[0]["lambdah"]),
-    #     })
-                
-    #     return jsonify({
-    #         "initial_default": result
-    #     })
     else:
-        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default;")
+        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM initialvalue ORDER BY date DESC;")
 
         i = 0
         result = []
+
+        already = set()
     
         while i < len(all_data):
-            result.append({
-                "name": str((all_data[i]["name"])),
-                "beta": float(all_data[i]["beta"]),
-                "zetas": float(all_data[i]["zetas"]),
-                "zetah": float(all_data[i]["zetah"]),
-                "omega1": float(all_data[i]["omega1"]),
-                "omega2": float(all_data[i]["omega2"]),
-                "omega3": float(all_data[i]["omega3"]),
-                "epsilon1": float(all_data[i]["epsilon1"]),
-                "epsilon2": float(all_data[i]["epsilon2"]),
-                "mu": float(all_data[i]["mu"]),
-                "alpha": float(all_data[i]["alpha"]),
-                "lambdas": float(all_data[i]["lambdas"]),
-                "lambdah": float(all_data[i]["lambdah"]),
-            })
+            if str((all_data[i]["name"])) in already:
+                i = i + 1 
+                continue
+            else:
+                already.add(str((all_data[i]["name"])))
+                result.append({
+                    "name": str((all_data[i]["name"])),
+                    "beta": float(all_data[i]["beta"]),
+                    "zetas": float(all_data[i]["zetas"]),
+                    "zetah": float(all_data[i]["zetah"]),
+                    "omega1": float(all_data[i]["omega1"]),
+                    "omega2": float(all_data[i]["omega2"]),
+                    "omega3": float(all_data[i]["omega3"]),
+                    "epsilon1": float(all_data[i]["epsilon1"]),
+                    "epsilon2": float(all_data[i]["epsilon2"]),
+                    "mu": float(all_data[i]["mu"]),
+                    "alpha": float(all_data[i]["alpha"]),
+                    "lambdas": float(all_data[i]["lambdas"]),
+                    "lambdah": float(all_data[i]["lambdah"]),
+                })
 
             i = i + 1 
                 
         return jsonify({
-            "initial_default": result
+            "initial_default": result,
         })
 
-
-@app.route("/calcovidmodel" , methods=['POST'])
+@app.route("/covidmodel/getdefault")
 @cross_origin()
-def calcovidmodel():
+def get_default():
+    all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default;")
 
-    global beta
-    global zetas
-    global zetah 
-    global omega1
-    global omega2
-    global omega3
-    global epsilon1
-    global epsilon2
-    global mu
-    global alpha
-    global lambdas
-    global lambdah
-    global length
-
-    # innitial conditions
-    start = request.get_json()["start_date"]
-
-    initial_value = query("SELECT beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, length FROM initialvalue WHERE name = \'" + start + "\' ORDER BY date DESC LIMIT 1;")
-    beta = float(initial_value[0]["beta"])
-    zetas = float(initial_value[0]["zetas"])
-    zetah = float(initial_value[0]["zetah"])
-    omega1 = float(initial_value[0]["omega1"])
-    omega2 = float(initial_value[0]["omega2"])
-    omega3 = float(initial_value[0]["omega3"])
-    epsilon1 = float(initial_value[0]["epsilon1"])
-    epsilon2 = float(initial_value[0]["epsilon2"])
-    mu = float(initial_value[0]["mu"])
-    alpha = float(initial_value[0]["alpha"])
-    lambdas = float(initial_value[0]["lambdas"])
-    lambdah = float(initial_value[0]["lambdah"])
-    length = int(initial_value[0]["length"])
-    
-    date_start = datetime.datetime.strptime(start, "%Y-%m-%d")
-    # print(int(length))
-
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase WHERE date = \'" + start + "\' ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata WHERE date = \'" + start + "\' ORDER BY date ASC;")
-    
     i = 0
     result = []
-    
-    while i < len(dailycase_data):
-        
 
-        x0=[int(dailycase_data[i]["susceptible"]),int(vaccine_data[i]["vaccines1"]),int(vaccine_data[i]["vaccines2"]),int(dailycase_data[i]["infected"]),int(dailycase_data[i]["recovery"]),int(dailycase_data[i]["hospital"]),int(dailycase_data[i]["recovery1"]) + int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["deaths"])]
-        
-        i = i + 1
-
-    t = np.linspace(0,int(length) - 1,int(length))
-    output = odeint(odes,x0,t)
-    # print(t)
-    
-
-    for i in range(int(length)):  
-
-        date_1 = date_start + datetime.timedelta(days=i)
-        date_string = str(date_1)
-        splited_date_string = date_string.split(sep = " ")
-        
+    while i < len(all_data):
         result.append({
-            "name": str(splited_date_string[0]), 
-            "Susceptible": int(output[i][0]),
-            "Infected": int(output[i][3]),
-            "Recovery": int(output[i][4]),
-            "Hospital": int(output[i][5]),
-            "Deaths": int(output[i][7]),
-            "Vaccine1": int(output[i][1]),
-            "Vaccine2": int(output[i][2]),
-            "Maintenance": int(output[i][6]),
-            # "test": str(dailycase_data[i]["name"])
+            "name": str((all_data[i]["name"])),
+            "beta": float(all_data[i]["beta"]),
+            "zetas": float(all_data[i]["zetas"]),
+            "zetah": float(all_data[i]["zetah"]),
+            "omega1": float(all_data[i]["omega1"]),
+            "omega2": float(all_data[i]["omega2"]),
+            "omega3": float(all_data[i]["omega3"]),
+            "epsilon1": float(all_data[i]["epsilon1"]),
+            "epsilon2": float(all_data[i]["epsilon2"]),
+            "mu": float(all_data[i]["mu"]),
+            "alpha": float(all_data[i]["alpha"]),
+            "lambdas": float(all_data[i]["lambdas"]),
+            "lambdah": float(all_data[i]["lambdah"]),
         })
 
-        updatecal(str(splited_date_string[0]),int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
-  
-    # print(result)
-    # return ""
-    
+        i = i + 1 
+            
     return jsonify({
-         "data": result
+        "initial_default": result
     })
+
+@app.route("/covidmodel/reset")
+@cross_origin()
+def input_reset():
+    default_values = query("SELECT * FROM public.default")
+
+    for i in default_values:
+        default_to_initial = (i['beta'], i['zetas'], i['zetah'], i['omega1'], i['omega2'], i['omega3'], i['epsilon1'], i['epsilon2'], i['mu'], i['alpha'], i['lambdah'], i['lambdas'], datetime.datetime.now(ZoneInfo('Asia/Bangkok')), i['name'])
+        insert([default_to_initial])
+
+    return "reset success"
+    
 
 @app.route("/covidmodel/day")
 @cross_origin()
 def modelday():
     
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
     
     
     i = 0
@@ -814,7 +755,7 @@ def modelday():
 @cross_origin()
 def modelweek():
     
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
     
     i = 0
     day = 1
@@ -956,7 +897,7 @@ def modelweek():
 @cross_origin()
 def modelmonth():
 
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
    
     i = 0
     month = 1
@@ -1055,14 +996,14 @@ def modelmonth():
         "data": result
     })
 
-
 @app.route("/vsdata/day")
 @cross_origin()
 def vsday():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    calculate_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
    
     s = 66186727
     i = 0
@@ -1080,7 +1021,7 @@ def vsday():
             "name": str(dailycase_data[i]["name"]),
             "SusceptibleRawData": int(sus),
             "SusceptibleModelData": int(model_data[i]["susceptible"]),
-            "InfectionRawData": int(dailycase_data[i]["infected"]),
+            "InfectionRawData": int(calculate_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),
             "InfectionModelData": int(model_data[i]["infected"]),
             "RecoveryRawData": int(dailycase_data[i]["recovery"]),
             "RecoveryModelData": int(model_data[i]["recovery"]),
@@ -1088,9 +1029,9 @@ def vsday():
             "HospitalizeModelData": int(model_data[i]["hospital"]),
             "DeathRawData": int(dailycase_data[i]["deaths"]),
             "DeathModelData": int(model_data[i]["deaths"]),
-            "Vaccines1RawData": int(vaccine_data[i]["vaccines1"]),
+            "Vaccines1RawData": int(calculate_data[i]["vaccines1"]) - int(calculate_data[i]["vaccines2"]),
             "Vaccines1ModelData": int(model_data[i]["vaccines1"]),
-            "Vaccines2RawData": int(vaccine_data[i]["vaccines2"]),
+            "Vaccines2RawData": int(calculate_data[i]["vaccines2"]) - int(vaccine_data[i]["vaccines3"]),
             "Vaccines2ModelData": int(model_data[i]["vaccines2"]),
             "MaintenanceShotRawData": int(dailycase_data[i]["recovery1"]) + int(vaccine_data[i]["vaccines3"]),
             "MaintenanceShotModelData": int(model_data[i]["maintenance"])
@@ -1109,7 +1050,8 @@ def vsweek():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    calculate_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
    
     i = 0
     day = 1
@@ -1137,6 +1079,10 @@ def vsweek():
     vaccines2m = 0
     susceptiblem = 0
     maintenancem = 0
+
+    infectedcal = 0
+    vaccines1cal = 0
+    vaccines2cal = 0
     
     result = []
     
@@ -1199,13 +1145,18 @@ def vsweek():
             susceptiblem = 0
             maintenancem = 0
 
+            infectedcal = 0
+            vaccines1cal = 0
+            vaccines2cal = 0
+
             day = 1
             month = month + 1
             week = 1
         
         
         if ((day % 7) != 0):
-            infected = infected + int(dailycase_data[i]["infected"])
+            # infected = infected + int(dailycase_data[i]["infected"])
+            infectedcal = infectedcal + int(calculate_data[i]["infected"])
             infectedm = infectedm + int(model_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
             recoverym = recoverym + int(model_data[i]["recovery"])
@@ -1213,9 +1164,11 @@ def vsweek():
             hospitalm = hospitalm + int(model_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
             deathsm = deathsm + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            vaccines1cal = vaccines1cal + int(calculate_data[i]["vaccines1"])
             vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            vaccines2cal = vaccines2cal + int(calculate_data[i]["vaccines2"])
             vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
@@ -1223,6 +1176,10 @@ def vsweek():
             recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
             maintenance = vaccines3 + recovery1
             maintenancem = maintenancem + int(model_data[i]["maintenance"])
+            infected = infectedcal -  recovery1
+            vaccines1 = vaccines1cal - vaccines2cal
+            vaccines2 = vaccines2cal - vaccines3
+
             
             day = day + 1
             
@@ -1230,7 +1187,8 @@ def vsweek():
             
             pass_condition = True
             
-            infected = infected + int(dailycase_data[i]["infected"])
+            # infected = infected + int(dailycase_data[i]["infected"])
+            infectedcal = infectedcal + int(calculate_data[i]["infected"])
             infectedm = infectedm + int(model_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
             recoverym = recoverym + int(model_data[i]["recovery"])
@@ -1238,9 +1196,11 @@ def vsweek():
             hospitalm = hospitalm + int(model_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
             deathsm = deathsm + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            vaccines1cal = vaccines1cal + int(calculate_data[i]["vaccines1"])
             vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            vaccines2cal = vaccines2cal + int(calculate_data[i]["vaccines2"])
             vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
@@ -1248,6 +1208,9 @@ def vsweek():
             recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
             maintenance = vaccines3 + recovery1
             maintenancem = maintenancem + int(model_data[i]["maintenance"])
+            infected = infectedcal -  recovery1
+            vaccines1 = vaccines1cal - vaccines2cal
+            vaccines2 = vaccines2cal - vaccines3
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
@@ -1290,6 +1253,10 @@ def vsweek():
             susceptiblem = 0
             maintenancem = 0
 
+            infectedcal = 0
+            vaccines1cal = 0
+            vaccines2cal = 0
+
             week = week + 1
             day = day + 1
             
@@ -1330,7 +1297,8 @@ def vsmonth():
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    calculate_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel ORDER BY date ASC;")
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
    
     i = 0
     month = 1
@@ -1357,7 +1325,10 @@ def vsmonth():
     susceptiblem = 0
     maintenancem = 0
 
-    
+    infectedcal = 0
+    vaccines1cal = 0
+    vaccines2cal = 0
+  
     result = []
     
     while i < len(dailycase_data):
@@ -1413,8 +1384,13 @@ def vsmonth():
             vaccines2m = 0
             susceptiblem = 0
             maintenancem = 0
+
+            infectedcal = 0
+            vaccines1cal = 0
+            vaccines2cal = 0
             
-            infected = infected + int(dailycase_data[i]["infected"])
+            # infected = infected + int(dailycase_data[i]["infected"])
+            infectedcal = infectedcal + int(calculate_data[i]["infected"])
             infectedm = infectedm + int(model_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
             recoverym = recoverym + int(model_data[i]["recovery"])
@@ -1422,16 +1398,21 @@ def vsmonth():
             hospitalm = hospitalm + int(model_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
             deathsm = deathsm + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            vaccines1cal = vaccines1cal + int(calculate_data[i]["vaccines1"])
             vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            vaccines2cal = vaccines2cal + int(calculate_data[i]["vaccines2"])
             vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            maintenance = recovery1 + vaccines3
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            maintenance = vaccines3 + recovery1
             maintenancem = maintenancem + int(model_data[i]["maintenance"])
+            infected = infectedcal -  recovery1
+            vaccines1 = vaccines1cal - vaccines2cal
+            vaccines2 = vaccines2cal - vaccines3
             
             if (splited_date_string[0] != year):
                 month = 1
@@ -1440,7 +1421,8 @@ def vsmonth():
                 month = month + 1
             
         else:
-            infected = infected + int(dailycase_data[i]["infected"])
+            # infected = infected + int(dailycase_data[i]["infected"])
+            infectedcal = infectedcal + int(calculate_data[i]["infected"])
             infectedm = infectedm + int(model_data[i]["infected"])
             recovery = recovery + int(dailycase_data[i]["recovery"])
             recoverym = recoverym + int(model_data[i]["recovery"])
@@ -1448,16 +1430,21 @@ def vsmonth():
             hospitalm = hospitalm + int(model_data[i]["hospital"])
             deaths = deaths + int(dailycase_data[i]["deaths"])
             deathsm = deathsm + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
+            vaccines1cal = vaccines1cal + int(calculate_data[i]["vaccines1"])
             vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
+            vaccines2cal = vaccines2cal + int(calculate_data[i]["vaccines2"])
             vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
             susceptible = susceptible + int(dailycase_data[i]["susceptible"])
             susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
             vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            maintenance = recovery1 + vaccines3
+            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
+            maintenance = vaccines3 + recovery1
             maintenancem = maintenancem + int(model_data[i]["maintenance"])
+            infected = infectedcal -  recovery1
+            vaccines1 = vaccines1cal - vaccines2cal
+            vaccines2 = vaccines2cal - vaccines3
             
             
         if (i == len(dailycase_data) - 1 and not pass_condition):
