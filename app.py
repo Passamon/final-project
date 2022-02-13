@@ -753,10 +753,8 @@ def modelday():
 @cross_origin()
 def modelweek():
     
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
-
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
-    
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode;")
+   
     i = 0
     day = 1
     month = 1
@@ -776,12 +774,13 @@ def modelweek():
    
     
     result = []
+    print (len(model_data))
     
-    while i < len(dailycase_data):
+    while i < len(model_data):
         
         pass_condition = False
         
-        date_string = str(dailycase_data[i]["name"])
+        date_string = str(model_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
         
         if (i == 0):
@@ -878,7 +877,7 @@ def modelweek():
             week = week + 1
             day = day + 1
             
-        if (i == len(dailycase_data) - 1 and not pass_condition):
+        if (i == len(model_data) - 1 and not pass_condition):
             
             result.append({
                 "name": str(week) + "-" + monthToMonthName(month),
