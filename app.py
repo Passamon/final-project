@@ -1,5 +1,3 @@
-from click import password_option
-from more_itertools import value_chain
 import psycopg2
 from psycopg2 import Error
 import psycopg2.extras
