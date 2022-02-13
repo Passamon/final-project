@@ -11,8 +11,6 @@ from flask_cors import CORS, cross_origin
 
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import null
-
 app = Flask(__name__)
 
 def query(query_string):
