@@ -5,6 +5,7 @@ from flask import request
 from scipy.integrate import odeint
 import numpy as np
 import datetime
+import threading
 
 from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
@@ -522,6 +523,53 @@ def odes(x, t):
 
     return[dSdt,dV1dt,dV2dt,dIdt,dRdt,dHdt,dMdt,dDdt]    
 
+def thread_callback(start,date_start,S,V1,V2,I,R,H,M,D):
+
+    x0=[S,V1,V2,I,R,H,M,D]
+
+    length = 16
+    t = np.linspace(0, length - 1, length)
+    output = odeint(odes,x0,t)
+
+    i = 0
+    result = []
+    
+    
+    for i in range(length):  
+
+        date_1 = date_start + datetime.timedelta(days=i)
+        date_string = str(date_1)
+        splited_date_string = date_string.split(sep = " ")
+        
+        result.append({
+            "name": str(splited_date_string[0]), 
+            "Susceptible": float(output[i][0]),
+            "Infected": float(output[i][3]),
+            "Recovery": float(output[i][4]),
+            "Hospital": float(output[i][5]),
+            "Deaths": float(output[i][7]),
+            "Vaccine1": float(output[i][1]),
+            "Vaccine2": float(output[i][2]),
+            "Maintenance": float(output[i][6]),
+            # "test": str(dailycase_data[i]["name"])
+        })
+
+        result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+        # updatecal(str(splited_date_string[0]),float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
+
+        model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE date = '" + date_string + "';")
+        if len(model_data) != 0:
+            updatecalculate(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+        else:
+            insertcalulate([result1])
+        
+    json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
+    insert([json])
+
+    print(result)
+    # return ""
+
+
 @app.route("/covidmodel" , methods=['PUT','GET'])
 @cross_origin()
 def input_request():
@@ -576,50 +624,11 @@ def input_request():
         
 
         # x0=[int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
-        x0=[int(dailycase_data[0]["susceptible"]),int(calculate_data[0]["vaccines1"]) - int(calculate_data[0]["vaccines2"]),int(calculate_data[0]["vaccines2"]) - int(vaccine_data[0]["vaccines3"]),int(calculate_data[0]["infected"]) - int(dailycase_data[0]["recovery1"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
-        
-        length = 16
-        t = np.linspace(0, length - 1, length)
-        output = odeint(odes,x0,t)
+        # x0=[int(dailycase_data[0]["susceptible"]),int(calculate_data[0]["vaccines1"]) - int(calculate_data[0]["vaccines2"]),int(calculate_data[0]["vaccines2"]) - int(vaccine_data[0]["vaccines3"]),int(calculate_data[0]["infected"]) - int(dailycase_data[0]["recovery1"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])]
+        thr = threading.Thread(target=thread_callback, args=[start,date_start,int(dailycase_data[0]["susceptible"]),int(vaccine_data[0]["vaccines1"]),int(vaccine_data[0]["vaccines2"]),int(dailycase_data[0]["infected"]),int(dailycase_data[0]["recovery"]),int(dailycase_data[0]["hospital"]),int(dailycase_data[0]["recovery1"]) + int(vaccine_data[0]["vaccines3"]),int(dailycase_data[0]["deaths"])])
+        thr.start()
 
-        i = 0
-        result = []
-        initialresult = []
-        
-        for i in range(length):  
-
-            date_1 = date_start + datetime.timedelta(days=i)
-            date_string = str(date_1)
-            splited_date_string = date_string.split(sep = " ")
-            
-            result.append({
-                "name": str(splited_date_string[0]), 
-                "Susceptible": float(output[i][0]),
-                "Infected": float(output[i][3]),
-                "Recovery": float(output[i][4]),
-                "Hospital": float(output[i][5]),
-                "Deaths": float(output[i][7]),
-                "Vaccine1": float(output[i][1]),
-                "Vaccine2": float(output[i][2]),
-                "Maintenance": float(output[i][6]),
-                # "test": str(dailycase_data[i]["name"])
-            })
-
-            result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-            # updatecal(str(splited_date_string[0]),float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')))
-
-            model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE date = '" + date_string + "';")
-            if len(model_data) != 0:
-                updatecalculate(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-            else:
-                insertcalulate([result1])
-            
-        json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
-        insert([json])
-
-        # print(result)
-        # return ""
-            
+        initialresult = [] 
         initialresult.append({
             "name": str(start),
             "beta": float(beta),
