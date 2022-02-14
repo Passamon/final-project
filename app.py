@@ -617,7 +617,7 @@ def input_request():
         json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
         insert([json])
 
-        print(result)
+        # print(result)
         # return ""
             
         initialresult.append({
