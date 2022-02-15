@@ -1002,11 +1002,10 @@ def modelmonth():
 @cross_origin()
 def vsday():
     
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths FROM dailycase ORDER BY date ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
     model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
    
-    s = 66186727
     i = 0
     result = []
     
@@ -1015,12 +1014,9 @@ def vsday():
         date_string = str(dailycase_data[i]["name"])
         splited_date_string = date_string.split(sep = "-")
         
-            
-        sus = s - (vaccine_data[i]["vaccines1"] + dailycase_data[i]["infected"] + dailycase_data[i]["recovery"] + dailycase_data[i]["hospital"] + dailycase_data[i]["deaths"])
-        
         result.append({
             "name": str(dailycase_data[i]["name"]),
-            "SusceptibleRawData": int(sus),
+            "SusceptibleRawData": int(dailycase_data[i]["susceptible"]),
             "SusceptibleModelData": int(model_data[i]["susceptible"]),
             "InfectionRawData": int(dailycase_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),
             "InfectionModelData": int(model_data[i]["infected"]),
