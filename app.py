@@ -1096,10 +1096,6 @@ def vsweek():
         if (i == 0):
             year = splited_date_string[0]
             
-        if (splited_date_string[0] != year):
-            month = 0
-            year = splited_date_string[0]
-        
         if (int(splited_date_string[2]) != day):
             
             pass_condition = True
@@ -1152,6 +1148,10 @@ def vsweek():
             day = 1
             month = month + 1
             week = 1
+
+        if (splited_date_string[0] != year):
+            month = 1
+            year = splited_date_string[0]
         
         
         if ((day % 7) != 0):
