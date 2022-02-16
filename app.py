@@ -111,6 +111,23 @@ def updatecalculate(s,v1,v2,i,r,h,d,m,timestamp,date):
     connection.commit()
     connection.close()    
 
+def setlock(lock):
+    connection = psycopg2.connect(user="mwtnjzht",
+                                    password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
+                                    host="john.db.elephantsql.com",
+                                    port="5432",
+                                    database="mwtnjzht")
+
+    connection.autocommit = True
+    cursor = connection.cursor()
+    sql = ''' update  threadlock  set
+          lock = %s'''
+  
+    cursor.execute(sql,(lock))
+ 
+    connection.commit()
+    connection.close()    
+
 def monthToMonthName(month):
     if (month == 1):
         return "January"
@@ -724,97 +741,105 @@ def get_default():
     })
 
 def setdefault():
-    default_values = query("SELECT * FROM public.default")
+    lock = query("SELECT lock FROM threadlock")
+    if lock[0]['lock'] == 0:
+    
+        setlock("1")
+        
+        default_values = query("SELECT * FROM public.default")
 
-    for i in default_values:
-        default_to_initial = (i['beta'], i['zetas'], i['zetah'], i['omega1'], i['omega2'], i['omega3'], i['epsilon1'], i['epsilon2'], i['mu'], i['alpha'], i['lambdah'], i['lambdas'], datetime.datetime.now(ZoneInfo('Asia/Bangkok')), i['name'])
-        insert([default_to_initial])
-    print ("save sucess")
+        for i in default_values:
+            default_to_initial = (i['beta'], i['zetas'], i['zetah'], i['omega1'], i['omega2'], i['omega3'], i['epsilon1'], i['epsilon2'], i['mu'], i['alpha'], i['lambdah'], i['lambdas'], datetime.datetime.now(ZoneInfo('Asia/Bangkok')), i['name'])
+            insert([default_to_initial])
+        print ("save sucess")
 
-    global beta
-    global zetas
-    global zetah 
-    global omega1
-    global omega2
-    global omega3
-    global epsilon1
-    global epsilon2
-    global mu
-    global alpha
-    global lambdas
-    global lambdah
+        global beta
+        global zetas
+        global zetah 
+        global omega1
+        global omega2
+        global omega3
+        global epsilon1
+        global epsilon2
+        global mu
+        global alpha
+        global lambdas
+        global lambdah
 
-    all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default ORDER BY name ASC;")
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
- 
-    i = 0
-    j = 0
+        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default ORDER BY name ASC;")
+        dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase ORDER BY date ASC;")
+        vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
+    
+        i = 0
+        j = 0
 
-    dailycase = len(dailycase_data)
-    default = len(all_data)
+        dailycase = len(dailycase_data)
+        default = len(all_data)
 
-    for i in range(dailycase):
-        for j in range(default):
-           
-            if str(all_data[j]["name"]) == str(dailycase_data[i]["name"]) and str(all_data[j]["name"]) == str(vaccine_data[i]["name"]):
-                start = str(all_data[j]["name"])
-                beta = float(all_data[j]["beta"])
-                zetas = float(all_data[j]["zetas"])
-                zetah = float(all_data[j]["zetah"])
-                omega1 = float(all_data[j]["omega1"])
-                omega2 = float(all_data[j]["omega2"])
-                omega3 = float(all_data[j]["omega3"])
-                epsilon1 = float(all_data[j]["epsilon1"])
-                epsilon2 = float(all_data[j]["epsilon2"])
-                mu = float(all_data[j]["mu"])
-                alpha = float(all_data[j]["alpha"])
-                lambdas = float(all_data[j]["lambdas"])
-                lambdah = float(all_data[j]["lambdah"])
+        for i in range(dailycase):
+            for j in range(default):
+            
+                if str(all_data[j]["name"]) == str(dailycase_data[i]["name"]) and str(all_data[j]["name"]) == str(vaccine_data[i]["name"]):
+                    start = str(all_data[j]["name"])
+                    beta = float(all_data[j]["beta"])
+                    zetas = float(all_data[j]["zetas"])
+                    zetah = float(all_data[j]["zetah"])
+                    omega1 = float(all_data[j]["omega1"])
+                    omega2 = float(all_data[j]["omega2"])
+                    omega3 = float(all_data[j]["omega3"])
+                    epsilon1 = float(all_data[j]["epsilon1"])
+                    epsilon2 = float(all_data[j]["epsilon2"])
+                    mu = float(all_data[j]["mu"])
+                    alpha = float(all_data[j]["alpha"])
+                    lambdas = float(all_data[j]["lambdas"])
+                    lambdah = float(all_data[j]["lambdah"])
 
-                
-
-                x0=[int(dailycase_data[i]["susceptible"]),int(vaccine_data[i]["vaccines1"]) - int(vaccine_data[i]["vaccines2"]),int(vaccine_data[i]["vaccines2"]) - int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),int(dailycase_data[i]["recovery"]),int(dailycase_data[i]["hospital"]),int(dailycase_data[i]["recovery1"]) + int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["deaths"])]
-
-                length = 16
-                t = np.linspace(0, length - 1, length)
-                output = odeint(odes,x0,t)
-
-                i = 0
-                result = [] 
-                
-                date_start = datetime.datetime.strptime(start, "%Y-%m-%d")   
-
-                for i in range(length):  
-
-                    date_1 = date_start + datetime.timedelta(days=i)
-                    date_string = str(date_1)
-                    splited_date_string = date_string.split(sep = " ")
                     
-                    result.append({
-                        "name": str(splited_date_string[0]), 
-                        "Susceptible": float(output[i][0]),
-                        "Infected": float(output[i][3]),
-                        "Recovery": float(output[i][4]),
-                        "Hospital": float(output[i][5]),
-                        "Deaths": float(output[i][7]),
-                        "Vaccine1": float(output[i][1]),
-                        "Vaccine2": float(output[i][2]),
-                        "Maintenance": float(output[i][6]),
-                        # "test": str(dailycase_data[i]["name"])
-                    })
 
-                    result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-                    # result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    x0=[int(dailycase_data[i]["susceptible"]),int(vaccine_data[i]["vaccines1"]) - int(vaccine_data[i]["vaccines2"]),int(vaccine_data[i]["vaccines2"]) - int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),int(dailycase_data[i]["recovery"]),int(dailycase_data[i]["hospital"]),int(dailycase_data[i]["recovery1"]) + int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["deaths"])]
 
-                    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE date = '" + date_string + "';")
+                    length = 16
+                    t = np.linspace(0, length - 1, length)
+                    output = odeint(odes,x0,t)
+
+                    i = 0
+                    result = [] 
                     
-                    if len(model_data) != 0:
-                        # updatecal(int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-                        updatecalculate(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-                    else:
-                        insertcalulate([result1])
-    print ("calculate sucess")
+                    date_start = datetime.datetime.strptime(start, "%Y-%m-%d")   
+
+                    for i in range(length):  
+
+                        date_1 = date_start + datetime.timedelta(days=i)
+                        date_string = str(date_1)
+                        splited_date_string = date_string.split(sep = " ")
+                        
+                        result.append({
+                            "name": str(splited_date_string[0]), 
+                            "Susceptible": float(output[i][0]),
+                            "Infected": float(output[i][3]),
+                            "Recovery": float(output[i][4]),
+                            "Hospital": float(output[i][5]),
+                            "Deaths": float(output[i][7]),
+                            "Vaccine1": float(output[i][1]),
+                            "Vaccine2": float(output[i][2]),
+                            "Maintenance": float(output[i][6]),
+                            # "test": str(dailycase_data[i]["name"])
+                        })
+
+                        result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                        # result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+
+                        model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE date = '" + date_string + "';")
+                        
+                        if len(model_data) != 0:
+                            # updatecal(int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                            updatecalculate(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                        else:
+                            insertcalulate([result1])
+        print ("calculate sucess")
+        setlock("0")
+    else:
+        return ""
 
    
 @app.route("/covidmodel/reset")
