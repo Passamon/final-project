@@ -5,14 +5,11 @@ from flask import request
 from scipy.integrate import odeint
 import numpy as np
 import datetime
-import threading
 
 from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
 
 from zoneinfo import ZoneInfo
-
-import pyodbc
 
 app = Flask(__name__)
 
