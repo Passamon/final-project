@@ -10,6 +10,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS, cross_origin
 
 from zoneinfo import ZoneInfo
+import time
 
 app = Flask(__name__)
 
@@ -44,7 +45,7 @@ def query(query_string):
             cursor.close()
             connection.close()
 
-def insert(insert_string):
+def insert(id, insert_string):
     connection = psycopg2.connect(user="mwtnjzht",
                                     password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
                                     host="john.db.elephantsql.com",
@@ -53,7 +54,7 @@ def insert(insert_string):
 
     connection.autocommit = True
     cursor = connection.cursor()
-    cursor.executemany("INSERT INTO initialvalue VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", insert_string)
+    cursor.executemany("INSERT INTO initialvalue VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'" + str(id) + "')", insert_string)
  
     connection.commit()
     connection.close()
@@ -130,14 +131,21 @@ def updatecalculate(s,v1,v2,i,r,h,d,m,timestamp,date):
     connection.commit()
     connection.close()    
 
-def update_query(s,v1,v2,i,r,h,d,m,timestamp,date):
-    query_string = "UPDATE updatesomenode SET s = \'" + str(s) + "\',v1 = \'" + str(v1) + "\', v2 = \'" + str(v2) + "\', i = \'" + str(i) + "\', r = \'" + str(r) + "\', h = \'" + str(h) + "\', d = \'" + str(d) + "\', m = \'" + str(m) + "\', timestamp =\'" + str(timestamp) + "\' WHERE date = \'" + str(date) + "\';"
+def update_query(id,s,v1,v2,i,r,h,d,m,timestamp,date):
+    query_string = "UPDATE updatesomenode SET s = \'" + str(s) + "\',v1 = \'" + str(v1) + "\', v2 = \'" + str(v2) + "\', i = \'" + str(i) + "\', r = \'" + str(r) + "\', h = \'" + str(h) + "\', d = \'" + str(d) + "\', m = \'" + str(m) + "\', timestamp =\'" + str(timestamp) + "\' WHERE date = \'" + str(date) + "\' AND id = '" + str(id) + "';"
     return query_string
 
 def insert_query(s,v1,v2,i,r,h,d,m,timestamp,date):
     sql_string = "INSERT INTO calculatemodel (s, v1, v2, i, r, h, d, m, timestamp, date) VALUES( \'" + str(s) + "\',\'" + str(v1) + "\', \'" + str(v2) + "\',  \'" + str(i) + "\',  \'" + str(r) + "\',  \'" + str(h) + "\',  \'" + str(d) + "\',  \'" + str(m) + "\', \'" + str(timestamp) + "\' ,\'" + str(date) + "\');"
     return  sql_string
 
+def check_if_id_already_exist(id):
+    check_previous = query("SELECT * FROM public.idlist WHERE id = '" + str(id) + "';")
+
+    if (len(check_previous) == 0): 
+        return False
+    else:
+        return True
 
 def setlock(lock):
     connection = psycopg2.connect(user="mwtnjzht",
@@ -578,9 +586,12 @@ def odes(x, t):
 
     return[dSdt,dV1dt,dV2dt,dIdt,dRdt,dHdt,dMdt,dDdt]    
  
-@app.route("/covidmodel" , methods=['PUT','GET'])
+@app.route("/covidmodel/<id>" , methods=['PUT','GET'])
 @cross_origin()
-def input_request():
+def input_request(id):
+
+    if (check_if_id_already_exist(id) == False):
+        return "false"
 
     global beta
     global zetas
@@ -660,11 +671,11 @@ def input_request():
                 "Maintenance": float(output[i][6]),
                 # "test": str(dailycase_data[i]["name"])
             })
-            update_query_string = update_query_string + update_query(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+            update_query_string = update_query_string + update_query(id, float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
             
         bulk_query(update_query_string)   
         json = (beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah, datetime.datetime.now(ZoneInfo('Asia/Bangkok')), start)
-        insert([json])
+        insert(id, [json])
 
         print("sucess")
         
@@ -691,7 +702,7 @@ def input_request():
         })
 
     else:
-        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM initialvalue ORDER BY date DESC;")
+        all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM initialvalue WHERE id = '" + str(id) + "' ORDER BY date DESC;")
 
         i = 0
         result = []
@@ -758,30 +769,33 @@ def get_default():
     })
 
 
-@app.route("/eiei")
-@cross_origin()
-def eieie():
+# @app.route("/eiei")
+# @cross_origin()
+# def eieie():
 
-    default_values = query("SELECT * FROM public.default")
-    for i in default_values:
+#     default_values = query("SELECT * FROM public.default")
+#     for i in default_values:
         
-        break
-    return generate_insert_query(i)
+#         break
+#     return generate_insert_query(i)
 
-def generate_insert_query(data):
-    sql_string = "INSERT INTO initialvalue (beta, zetas, zetah, omega1,omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdah, lambdas, date, name) VALUES( \'" + str(data['beta']) + "\',\'" + str(data['zetas']) + "\', \'" + str(data['zetah']) + "\',  \'" + str(data['omega1']) + "\',  \'" + str(data['omega2']) + "\',  \'" + str(data['omega3']) + "\',  \'" + str(data['epsilon1']) + "\',  \'" + str(data['epsilon2']) + "\', \'" + str(data['mu']) + "\' ,\'" + str(data['alpha']) + "\',\'" + str(data['lambdah']) + "\',\'" + str(data['lambdas']) + "\',\'" + str(datetime.datetime.now(ZoneInfo('Asia/Bangkok'))) + "\',\'" + str(data['name']) + "\');"
+def generate_insert_query(id, data):
+    sql_string = "INSERT INTO initialvalue (id, beta, zetas, zetah, omega1,omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdah, lambdas, date, name) VALUES('" + str(id) + "', \'" + str(data['beta']) + "\',\'" + str(data['zetas']) + "\', \'" + str(data['zetah']) + "\',  \'" + str(data['omega1']) + "\',  \'" + str(data['omega2']) + "\',  \'" + str(data['omega3']) + "\',  \'" + str(data['epsilon1']) + "\',  \'" + str(data['epsilon2']) + "\', \'" + str(data['mu']) + "\' ,\'" + str(data['alpha']) + "\',\'" + str(data['lambdah']) + "\',\'" + str(data['lambdas']) + "\',\'" + str(datetime.datetime.now(ZoneInfo('Asia/Bangkok'))) + "\',\'" + str(data['name']) + "\');"
     return sql_string
    
-@app.route("/covidmodel/reset")
+@app.route("/covidmodel/reset/<id>")
 @cross_origin()
-def input_reset():
+def input_reset(id):
+
+    if (check_if_id_already_exist(id) == False):
+        return "false"
 
     initial_query_string = ""
     
     default_values = query("SELECT * FROM public.default")
 
     for i in default_values:
-        initial_query_string = initial_query_string + generate_insert_query(i)
+        initial_query_string = initial_query_string + generate_insert_query(id, i)
 
     bulk_query(initial_query_string)
 
@@ -861,7 +875,7 @@ def input_reset():
 
                     # result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
                     result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
-                    bulk_update_string = bulk_update_string + update_query(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    bulk_update_string = bulk_update_string + update_query(id, float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
                     # model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel WHERE date = '" + date_string + "';")
                     
                     # if len(model_data) != 0:
@@ -872,13 +886,168 @@ def input_reset():
     print ("calculate sucess")
     bulk_query(bulk_update_string)
     return "reset success"
+
+@app.route("/createuserid")
+@cross_origin()
+def createuserid():
+    connection = psycopg2.connect(user="mwtnjzht",
+                                password="fVSeF78PdfVJX-NQ9RDjAYdsHejAe11n",
+                                host="john.db.elephantsql.com",
+                                port="5432",
+                                database="mwtnjzht")
+    cursor = connection.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+    cursor.execute("INSERT INTO public.idlist (date) VALUES(now()) RETURNING id;")
+    id = cursor.fetchone()["id"]
+    connection.commit()
+    
+    cursor.close()
+    connection.close()
+
+    initial_query_string = ""
+    
+    default_values = query("SELECT * FROM public.default")
+
+    for i in default_values:
+        initial_query_string = initial_query_string + generate_insert_query(id, i)
+
+    bulk_query(initial_query_string)
+
+    global beta
+    global zetas
+    global zetah 
+    global omega1
+    global omega2
+    global omega3
+    global epsilon1
+    global epsilon2
+    global mu
+    global alpha
+    global lambdas
+    global lambdah
+
+    all_data = query("SELECT name, beta, zetas, zetah, omega1, omega2, omega3, epsilon1, epsilon2, mu, alpha, lambdas, lambdah FROM public.default ORDER BY name ASC;")
+    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible  FROM dailycase ORDER BY date ASC;")
+    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
+
+    i = 0
+    j = 0
+
+    dailycase = len(dailycase_data)
+    default = len(all_data)
+
+    bulk_update_string = ""
+
+    for i in range(dailycase):
+        for j in range(default):
+        
+            if str(all_data[j]["name"]) == str(dailycase_data[i]["name"]) and str(all_data[j]["name"]) == str(vaccine_data[i]["name"]):
+                start = str(all_data[j]["name"])
+                beta = float(all_data[j]["beta"])
+                zetas = float(all_data[j]["zetas"])
+                zetah = float(all_data[j]["zetah"])
+                omega1 = float(all_data[j]["omega1"])
+                omega2 = float(all_data[j]["omega2"])
+                omega3 = float(all_data[j]["omega3"])
+                epsilon1 = float(all_data[j]["epsilon1"])
+                epsilon2 = float(all_data[j]["epsilon2"])
+                mu = float(all_data[j]["mu"])
+                alpha = float(all_data[j]["alpha"])
+                lambdas = float(all_data[j]["lambdas"])
+                lambdah = float(all_data[j]["lambdah"])
+
+                
+                x0=[int(dailycase_data[i]["susceptible"]),int(vaccine_data[i]["vaccines1"]) - int(vaccine_data[i]["vaccines2"]),int(vaccine_data[i]["vaccines2"]) - int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["infected"]) - int(dailycase_data[i]["recovery1"]),int(dailycase_data[i]["recovery"]),int(dailycase_data[i]["hospital"]),int(dailycase_data[i]["recovery1"]) + int(vaccine_data[i]["vaccines3"]),int(dailycase_data[i]["deaths"])]
+
+                length = 16
+                t = np.linspace(0, length - 1, length)
+                output = odeint(odes,x0,t)
+
+                i = 0
+                result = [] 
+                
+                date_start = datetime.datetime.strptime(start, "%Y-%m-%d")   
+
+                for i in range(length):  
+
+                    date_1 = date_start + datetime.timedelta(days=i)
+                    date_string = str(date_1)
+                    splited_date_string = date_string.split(sep = " ")
+                    
+                    result.append({
+                        "name": str(splited_date_string[0]), 
+                        "Susceptible": float(output[i][0]),
+                        "Infected": float(output[i][3]),
+                        "Recovery": float(output[i][4]),
+                        "Hospital": float(output[i][5]),
+                        "Deaths": float(output[i][7]),
+                        "Vaccine1": float(output[i][1]),
+                        "Vaccine2": float(output[i][2]),
+                        "Maintenance": float(output[i][6]),
+                        # "test": str(dailycase_data[i]["name"])
+                    })
+
+                    # result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    result1 = (float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    bulk_update_string = bulk_update_string + update_query(id, float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    # model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM calculatemodel WHERE date = '" + date_string + "';")
+                    
+                    # if len(model_data) != 0:
+                    #     # updatecal(int(output[i][0]),int(output[i][1]),int(output[i][2]),int(output[i][3]),int(output[i][4]),int(output[i][5]),int(output[i][7]),int(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    #     bulk_update_string = bulk_update_string + update_query(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+                    # else:
+                    #     bulk_insert_string = bulk_insert_string + insert_query(float(output[i][0]),float(output[i][1]),float(output[i][2]),float(output[i][3]),float(output[i][4]),float(output[i][5]),float(output[i][7]),float(output[i][6]),datetime.datetime.now(ZoneInfo('Asia/Bangkok')),str(splited_date_string[0]))
+    print ("successfully added initial values")
+    bulk_query(bulk_update_string)
+
+    return jsonify({
+        "id": id
+    })
+
+@app.route("/deleteuserid")
+@cross_origin()
+def deleteuserid():
+    from datetime import datetime, timedelta, tzinfo
+    id_list = query("SELECT * FROM idlist")
+    remove_list = []
+
+    for each in id_list:
+
+        current_time = datetime.utcnow() + timedelta(hours=-10)
+        if each["date"].replace(tzinfo=None) <= current_time:
+            remove_list.append(each["id"])
+
+    for each_id in remove_list:
+        bulk_query("DELETE FROM public.idlist WHERE id = '" + str(each_id) + "';DELETE FROM public.initialvalue WHERE id = '" + str(each_id) + "';DELETE FROM public.updatesomenode WHERE id = '" + str(each_id) + "';")
+
+    return jsonify(remove_list)
+
+def insert_if_not_already_in_table(id):
+    check_previous = query("SELECT * FROM updatesomenode WHERE id = '" + str(id) + "';")
+
+    if (len(check_previous) == 0):
+        query_string = ""
+        result = query("SELECT * FROM calculatemodel")
+
+        for each in result:
+            kkk = "null" if each["timestamp"] == None else ("'" + str(each["timestamp"]) + "'")
+            query_string += "INSERT INTO public.updatesomenode(s, v1, v2, i, r, h, d, m, \"timestamp\", date, id) VALUES ('" + str(each["s"]) + "', '" + str(each["v1"]) + "', '" + str(each["v2"]) + "', '" + str(each["i"]) + "', '" + str(each["r"]) + "', '" + str(each["h"]) + "', '" + str(each["d"]) + "', '" + str(each["m"]) + "', " + kkk + ", '" + str(each["date"]) + "', '" + str(id) + "');"
+        
+        bulk_query(query_string)
+        print("First time " + str(id))
     
 
-@app.route("/covidmodel/day")
-@cross_origin()
-def modelday():
     
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
+
+
+@app.route("/covidmodel/day/<id>")
+@cross_origin()
+def modelday(id):
+
+    if (check_if_id_already_exist(id) == False):
+        return "false"
+
+    insert_if_not_already_in_table(id)
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE id = '" + str(id) + "' ORDER BY date ASC;")
     
     
     i = 0
@@ -904,154 +1073,15 @@ def modelday():
         "data": result
     })
 
-@app.route("/covidmodel/week")
+@app.route("/covidmodel/month/<id>")
 @cross_origin()
-def modelweek():
-    
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
-   
-    i = 0
-    day = 1
-    month = 1
-    week = 1
-    
-    year = -1
-    
-    infected = 0
-    recovery = 0
-    hospital = 0
-    deaths = 0
-    vaccines1 = 0
-    vaccines2 = 0
-    susceptible = 0
-    maintenance = 0
-   
-    result = []
+def modelmonth(id):
 
-    
-    while i < len(model_data):
-        
-        pass_condition = False
-        
-        date_string = str(model_data[i]["name"])
-       
-        splited_date_string = date_string.split(sep = "-")
-        
-        if (i == 0):
-            year = splited_date_string[0]
-            
-        if (int(splited_date_string[2]) != day):
+    if (check_if_id_already_exist(id) == False):
+        return "false"
 
-            pass_condition = True
-
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": int(susceptible),
-                "Infected": int(infected),
-                # "Recovery": int(recovery),
-                "Hospital": int(hospital),
-                "Deaths": int(deaths),
-                "Vaccine1": int(vaccines1),
-                "Vaccine2": int(vaccines2),
-                "Maintenance":int(maintenance),
-                "Year": str(year)
-            })
-            
-            infected = 0
-            recovery = 0
-            hospital = 0
-            deaths = 0
-            vaccines1 = 0
-            vaccines2 = 0
-            susceptible = 0
-            maintenance = 0
-
-            day = 1
-            month = month + 1
-            week = 1
-
-        if (splited_date_string[0] != year):
-            month = 1
-            year = splited_date_string[0]
-        
-        
-        if ((day % 7) != 0):
-
-            infected = infected + int(model_data[i]["infected"])
-            recovery = recovery + int(model_data[i]["recovery"])
-            hospital = hospital + int(model_data[i]["hospital"])
-            deaths = deaths + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(model_data[i]["vaccines2"])
-            susceptible = susceptible + int(model_data[i]["susceptible"])
-            maintenance = maintenance + int(model_data[i]["maintenance"])
-           
-            day = day + 1
-            
-        else:
-
-            pass_condition = True
-            
-            infected = infected + int(model_data[i]["infected"])
-            recovery = recovery + int(model_data[i]["recovery"])
-            hospital = hospital + int(model_data[i]["hospital"])
-            deaths = deaths + int(model_data[i]["deaths"])
-            vaccines1 = vaccines1 + int(model_data[i]["vaccines1"])
-            vaccines2 = vaccines2 + int(model_data[i]["vaccines2"])
-            susceptible = susceptible + int(model_data[i]["susceptible"])
-            maintenance = maintenance + int(model_data[i]["maintenance"])
-  
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": int(susceptible),
-                "Infected": int(infected),
-                # "Recovery": int(recovery),
-                "Hospital": int(hospital),
-                "Deaths": int(deaths),
-                "Vaccine1": int(vaccines1),
-                "Vaccine2": int(vaccines2),
-                "Maintenance":int(maintenance),
-                "Year": str(year)
-            })
-            
-            infected = 0
-            recovery = 0
-            hospital = 0
-            deaths = 0
-            vaccines1 = 0
-            vaccines2 = 0
-            maintenance = 0
-            susceptible = 0
-
-            week = week + 1
-            day = day + 1
-            
-        if (i == len(model_data) - 1 and not pass_condition):
-
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "Susceptible": int(susceptible),
-                "Infected": int(infected),
-                # "Recovery": int(recovery),
-                "Hospital": int(hospital),
-                "Deaths": int(deaths),
-                "Vaccine1": int(vaccines1),
-                "Vaccine2": int(vaccines2),
-                "Maintenance":int(maintenance),
-                "Year": str(year)
-            })
-            
-        i = i + 1        
-    
-    return jsonify({
-        "data": result
-    })
-
-@app.route("/covidmodel/month")
-@cross_origin()
-def modelmonth():
-
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
+    insert_if_not_already_in_table(id)
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE id = '" + str(id) + "' ORDER BY date ASC;")
    
     i = 0
     month = 1
@@ -1150,13 +1180,18 @@ def modelmonth():
         "data": result
     })
 
-@app.route("/vsdata/day")
+@app.route("/vsdata/day/<id>")
 @cross_origin()
-def vsday():
+def vsday(id):
+
+    if (check_if_id_already_exist(id) == False):
+        return "false"
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
+    
+    insert_if_not_already_in_table(id)
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE id = '" + str(id) + "' ORDER BY date ASC;")
    
     i = 0
     result = []
@@ -1193,258 +1228,18 @@ def vsday():
         "data": result
     })
 
-@app.route("/vsdata/week")
+@app.route("/vsdata/month/<id>")
 @cross_origin()
-def vsweek():
+def vsmonth(id):
+
+    if (check_if_id_already_exist(id) == False):
+        return "false"
     
     dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
     vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
-   
-    i = 0
-    day = 1
-    month = 1
-    week = 1
     
-    year = -1
-    
-    infected = 0
-    recovery = 0
-    hospital = 0
-    deaths = 0
-    vaccines1 = 0
-    vaccines2 = 0
-    susceptible = 0
-    recovery1 = 0
-    vaccines3 = 0
-    maintenance = 0
-
-    infectedm = 0
-    recoverym = 0
-    hospitalm = 0
-    deathsm = 0
-    vaccines1m = 0
-    vaccines2m = 0
-    susceptiblem = 0
-    maintenancem = 0
-
-    infectedcal = 0
-    vaccines1cal = 0
-    vaccines2cal = 0
-    
-    result = []
-    
-    while i < len(dailycase_data):
-        
-        pass_condition = False
-        
-        date_string = str(dailycase_data[i]["name"])
-        splited_date_string = date_string.split(sep = "-")
-        
-        if (i == 0):
-            year = splited_date_string[0]
-            
-        if (int(splited_date_string[2]) != day):
-            
-            pass_condition = True
-            
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "SusceptibleRawData": int(susceptible),
-                "SusceptibleModelData":int(susceptiblem),
-                "InfectionRawData": int(infected),
-                "InfectionModelData":int(infectedm),
-                # "RecoveryRawData": int(recovery),
-                # "RecoveryModelData":int(recoverym),
-                "HospitalizeRawData": int(hospital),
-                "HospitalizeModelData":int(hospitalm),
-                "DeathRawData": int(deaths),
-                "DeathModelData":int(deathsm),
-                "Vaccines1RawData": int(vaccines1),
-                "Vaccines1ModelData":int(vaccines1m),
-                "Vaccines2RawData": int(vaccines2),
-                "Vaccines2ModelData":int(vaccines2m),
-                "MaintenanceShotRawData":int(maintenance),
-                "MaintenanceShotModelData":int(maintenancem),
-                "Year": str(year)
-            })
-
-            infected = 0
-            recovery = 0
-            hospital = 0
-            deaths = 0
-            vaccines1 = 0
-            vaccines2 = 0
-            susceptible = 0
-            recovery1 = 0
-            vaccines3 = 0
-            maintenance = 0
-
-            infectedm = 0
-            recoverym = 0
-            hospitalm = 0
-            deathsm = 0
-            vaccines1m = 0
-            vaccines2m = 0
-            susceptiblem = 0
-            maintenancem = 0
-
-            infectedcal = 0
-            vaccines1cal = 0
-            vaccines2cal = 0
-
-            day = 1
-            month = month + 1
-            week = 1
-
-        if (splited_date_string[0] != year):
-            month = 1
-            year = splited_date_string[0]
-        
-        
-        if ((day % 7) != 0):
-            # infected = infected + int(dailycase_data[i]["infected"])
-            infectedcal = infectedcal + int(dailycase_data[i]["infected"])
-            infectedm = infectedm + int(model_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
-            recoverym = recoverym + int(model_data[i]["recovery"])
-            hospital = hospital + int(dailycase_data[i]["hospital"])
-            hospitalm = hospitalm + int(model_data[i]["hospital"])
-            deaths = deaths + int(dailycase_data[i]["deaths"])
-            deathsm = deathsm + int(model_data[i]["deaths"])
-            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines1cal = vaccines1cal + int(vaccine_data[i]["vaccines1"])
-            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
-            vaccines2cal = vaccines2cal + int(vaccine_data[i]["vaccines2"])
-            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
-            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
-            susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
-            vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
-            maintenance = vaccines3 + recovery1
-            maintenancem = maintenancem + int(model_data[i]["maintenance"])
-            infected = infectedcal -  recovery1
-            vaccines1 = vaccines1cal - vaccines2cal
-            vaccines2 = vaccines2cal - vaccines3
-
-            
-            day = day + 1
-            
-        else:
-            
-            pass_condition = True
-            
-            # infected = infected + int(dailycase_data[i]["infected"])
-            infectedcal = infectedcal + int(dailycase_data[i]["infected"])
-            infectedm = infectedm + int(model_data[i]["infected"])
-            recovery = recovery + int(dailycase_data[i]["recovery"])
-            recoverym = recoverym + int(model_data[i]["recovery"])
-            hospital = hospital + int(dailycase_data[i]["hospital"])
-            hospitalm = hospitalm + int(model_data[i]["hospital"])
-            deaths = deaths + int(dailycase_data[i]["deaths"])
-            deathsm = deathsm + int(model_data[i]["deaths"])
-            # vaccines1 = vaccines1 + int(vaccine_data[i]["vaccines1"])
-            vaccines1cal = vaccines1cal + int(vaccine_data[i]["vaccines1"])
-            vaccines1m = vaccines1m + int(model_data[i]["vaccines1"])
-            # vaccines2 = vaccines2 + int(vaccine_data[i]["vaccines2"])
-            vaccines2cal = vaccines2cal + int(vaccine_data[i]["vaccines2"])
-            vaccines2m = vaccines2m + int(model_data[i]["vaccines2"])
-            susceptible = susceptible + int(dailycase_data[i]["susceptible"])
-            susceptiblem = susceptiblem + int(model_data[i]["susceptible"])
-            vaccines3 = vaccines3 + int(vaccine_data[i]["vaccines3"])
-            recovery1 = recovery1 + int(dailycase_data[i]["recovery1"])
-            maintenance = vaccines3 + recovery1
-            maintenancem = maintenancem + int(model_data[i]["maintenance"])
-            infected = infectedcal -  recovery1
-            vaccines1 = vaccines1cal - vaccines2cal
-            vaccines2 = vaccines2cal - vaccines3
-            
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "SusceptibleRawData": int(susceptible),
-                "SusceptibleModelData":int(susceptiblem),
-                "InfectionRawData": int(infected),
-                "InfectionModelData":int(infectedm),
-                # "RecoveryRawData": int(recovery),
-                # "RecoveryModelData":int(recoverym),
-                "HospitalizeRawData": int(hospital),
-                "HospitalizeModelData":int(hospitalm),
-                "DeathRawData": int(deaths),
-                "DeathModelData":int(deathsm),
-                "Vaccines1RawData": int(vaccines1),
-                "Vaccines1ModelData":int(vaccines1m),
-                "Vaccines2RawData": int(vaccines2),
-                "Vaccines2ModelData":int(vaccines2m),
-                "MaintenanceShotRawData":int(maintenance),
-                "MaintenanceShotModelData":int(maintenancem),
-                "Year": str(year)
-            })
-            
-            infected = 0
-            recovery = 0
-            hospital = 0
-            deaths = 0
-            vaccines1 = 0
-            vaccines2 = 0
-            susceptible = 0
-            recovery1 = 0
-            vaccines3 = 0
-            maintenance = 0
-            
-            infectedm = 0
-            recoverym = 0
-            hospitalm = 0
-            deathsm = 0
-            vaccines1m = 0
-            vaccines2m = 0
-            susceptiblem = 0
-            maintenancem = 0
-
-            infectedcal = 0
-            vaccines1cal = 0
-            vaccines2cal = 0
-
-            week = week + 1
-            day = day + 1
-            
-        if (i == len(dailycase_data) - 1 and not pass_condition):
-            
-            
-            result.append({
-                "name": str(week) + "-" + monthToMonthName(month),
-                "SusceptibleRawData": int(susceptible),
-                "SusceptibleModelData":int(susceptiblem),
-                "InfectionRawData": int(infected),
-                "InfectionModelData":int(infectedm),
-                # "RecoveryRawData": int(recovery),
-                # "RecoveryModelData":int(recoverym),
-                "HospitalizeRawData": int(hospital),
-                "HospitalizeModelData":int(hospitalm),
-                "DeathRawData": int(deaths),
-                "DeathModelData":int(deathsm),
-                "Vaccines1RawData": int(vaccines1),
-                "Vaccines1ModelData":int(vaccines1m),
-                "Vaccines2RawData": int(vaccines2),
-                "Vaccines2ModelData":int(vaccines2m),
-                "MaintenanceShotRawData":int(maintenance),
-                "MaintenanceShotModelData":int(maintenancem),
-                "Year": str(year)
-            })
-            
-        i = i + 1        
-    
-    return jsonify({
-        "data": result
-    })
-
-@app.route("/vsdata/month")
-@cross_origin()
-def vsmonth():
-    
-    dailycase_data = query("SELECT date as name, confirmed as infected, newrecovered as recovery, recovered as recovery1, hospitalized as hospital, deaths as deaths, susceptible as susceptible FROM dailycase ORDER BY date ASC;")
-    vaccine_data = query("SELECT date as name, first_dose as vaccines1, second_dose as vaccines2, third_dose as vaccines3 FROM vaccinedata ORDER BY date ASC;")
-    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode ORDER BY date ASC;")
+    insert_if_not_already_in_table(id)
+    model_data = query("SELECT date as name, i as infected, r as recovery, h as hospital, d as deaths, s as susceptible, v1 as vaccines1, v2 as vaccines2, m as maintenance FROM updatesomenode WHERE id = '" + str(id) + "' ORDER BY date ASC;")
    
     i = 0
     month = 1
